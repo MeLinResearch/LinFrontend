@@ -1,36 +1,19 @@
-# LinForensics Marketing Site
+# LinForensics Website
 
-Static marketing frontend built with Vite + React + Tailwind.
+Static marketing website for LinForensics.
 
-## Run locally
+Built with Vite, React, and Tailwind.
+
+## Commands
 
 ```bash
 npm install
-npm run dev
-```
-
-## Build
-
-```bash
 npm run build
+npm run preview
 ```
 
-Build output is generated in `dist/`.
+## Deployment
 
-## Deploy to GitHub Pages
+This site is intended for GitHub Pages with a custom domain.
 
-1. Build the site:
-   ```bash
-   npm install
-   npm run build
-   ```
-2. Deploy the contents of `dist/` to GitHub Pages.
-
-## Vite base path notes
-
-- For custom domain deployments, keep `base: "/"` in `vite.config.js`.
-- For `username.github.io/repo-name` deployments, set `base` to `"/repo-name/"`.
-
-## SPA routing fallback
-
-This project uses `BrowserRouter` and creates `dist/404.html` by copying `dist/index.html` during build, enabling GitHub Pages fallback routing for static SPA URLs.
+This repository contains only the public static website. It does not contain backend processing code, authentication code, report-generation code, payment webhook code, prompts, scoring logic, taxonomy files, or API keys.

@@ -88,8 +88,7 @@ function HomePage() {
 
   return (
     <Layout>
-      {/* Hero */}
-      <section className="bg-gradient-to-b from-white via-indigo-50/40 to-slate-50">
+            <section className="bg-gradient-to-b from-white via-indigo-50/40 to-slate-50">
         <div className="max-w-5xl mx-auto px-6 py-20 md:py-24">
           <span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium uppercase tracking-wider px-3 py-1 ring-1 ring-indigo-100">
             Decision-support software
@@ -124,8 +123,7 @@ function HomePage() {
         </div>
       </section>
 
-      {/* How it works */}
-      <section className="bg-slate-50/60 border-y border-slate-200/70">
+            <section className="bg-slate-50/60 border-y border-slate-200/70">
         <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
           <Eyebrow>Process</Eyebrow>
           <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">How it works</h2>
@@ -143,8 +141,7 @@ function HomePage() {
         </div>
       </section>
 
-      {/* Report includes */}
-      <section className="bg-white">
+            <section className="bg-white">
         <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
           <Eyebrow>Deliverable</Eyebrow>
           <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">Report includes</h2>
@@ -232,20 +229,8 @@ function PricingPage() {
               Buy Report
             </a>
 
-            {/* TODO: Remove this test-mode checkout note before public launch. */}
-            <div className="mt-4 flex items-center gap-2 flex-wrap">
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-800 text-xs font-medium px-3 py-1 ring-1 ring-amber-200/60">
-                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <circle cx="10" cy="10" r="7" />
-                  <path d="M10 7v4M10 13.5v.01" strokeLinecap="round" />
-                </svg>
-                Pre-launch
-              </span>
-              <span className="text-xs text-slate-500">Checkout is currently configured for pre-launch/test-mode validation.</span>
-            </div>
-            <p className="mt-3 text-xs text-slate-500 leading-relaxed">
-              Full account-linked checkout will be enabled before public launch.
-            </p>
+                        <p className="mt-4 text-xs text-slate-500">After purchase, retain your receipt. Report access is handled through the LinForensics report system.</p>
+
           </div>
 
           <div className="mt-8 max-w-xl mx-auto rounded-2xl bg-slate-50 p-6 ring-1 ring-slate-200/70">
