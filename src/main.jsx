@@ -3,31 +3,76 @@ import ReactDOM from 'react-dom/client';
 import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
 import './index.css';
 
+function CheckIcon({ className = 'h-5 w-5 text-indigo-600 shrink-0 mt-0.5' }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M5 10.5l3.5 3.5L15 6.5" />
+    </svg>
+  );
+}
+
+function ShieldIcon({ className = 'h-4 w-4 text-white' }) {
+  return (
+    <svg className={className} viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M10 2l6 2v5c0 4-2.5 7-6 9-3.5-2-6-5-6-9V4l6-2z" />
+      <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10l1.5 1.5L13 7.5" />
+    </svg>
+  );
+}
+
+function Eyebrow({ children }) {
+  return <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700">{children}</p>;
+}
+
 function Layout({ children }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <header className="bg-white border-b border-slate-200">
+      <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-slate-200/70">
         <nav className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <Link to="/" className="text-xl font-semibold text-slate-900">LinForensics</Link>
-          <div className="flex items-center gap-4 text-sm">
-            <Link to="/pricing" className="text-slate-600 hover:text-slate-900">Pricing</Link>
-            <Link to="/privacy" className="text-slate-600 hover:text-slate-900">Privacy</Link>
-            <Link to="/terms" className="text-slate-600 hover:text-slate-900">Terms</Link>
-            <Link to="/pricing" className="inline-flex items-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 font-medium">Start Review</Link>
+          <Link to="/" className="flex items-center gap-2">
+            <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600">
+              <ShieldIcon />
+            </span>
+            <span className="text-lg font-semibold tracking-tight text-slate-900">LinForensics</span>
+          </Link>
+          <div className="flex items-center gap-6 text-sm">
+            <Link to="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
+            <Link to="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">Privacy</Link>
+            <Link to="/terms" className="text-slate-600 hover:text-slate-900 transition-colors">Terms</Link>
+            <Link
+              to="/pricing"
+              className="inline-flex items-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            >
+              Start Review
+            </Link>
           </div>
         </nav>
       </header>
+
       <main className="flex-1">{children}</main>
+
       <footer className="border-t border-slate-200 bg-white mt-16">
-        <div className="max-w-5xl mx-auto px-6 py-8 space-y-3">
-          <p className="text-lg font-semibold">LinForensics</p>
-          <p className="text-slate-600">Decision-support software for structured communication review.</p>
-          <div className="flex gap-4 text-sm">
-            <Link to="/pricing" className="text-slate-600 hover:text-slate-900">Pricing</Link>
-            <Link to="/privacy" className="text-slate-600 hover:text-slate-900">Privacy</Link>
-            <Link to="/terms" className="text-slate-600 hover:text-slate-900">Terms</Link>
+        <div className="max-w-5xl mx-auto px-6 py-10 grid gap-8 md:grid-cols-3">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-indigo-600">
+                <ShieldIcon className="h-3.5 w-3.5 text-white" />
+              </span>
+              <p className="text-base font-semibold tracking-tight">LinForensics</p>
+            </div>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              Decision-support software for structured communication review.
+            </p>
           </div>
-          <p className="text-sm text-slate-500">LinForensics does not provide legal, medical, mental health, emergency, or regulated professional advice, and does not make findings or determinations.</p>
+          <div className="flex flex-col gap-2 text-sm">
+            <p className="text-xs font-semibold uppercase tracking-wider text-slate-500">Links</p>
+            <Link to="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
+            <Link to="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">Privacy</Link>
+            <Link to="/terms" className="text-slate-600 hover:text-slate-900 transition-colors">Terms</Link>
+          </div>
+          <p className="text-xs text-slate-500 leading-relaxed">
+            LinForensics does not provide legal, medical, mental health, emergency, or regulated professional advice, and does not make findings or determinations.
+          </p>
         </div>
       </footer>
     </div>
@@ -35,42 +80,81 @@ function Layout({ children }) {
 }
 
 function HomePage() {
+  const steps = [
+    ['Submit message text', 'Paste or upload the chat and message text you want to review.'],
+    ['LinForensics organizes the evidence', 'LinForensics identifies cited excerpts and labels candidate communication patterns.'],
+    ['Review the structured report', 'Receive an audit-friendly report formatted for independent human review.'],
+  ];
+
   return (
     <Layout>
-      <section className="max-w-5xl mx-auto px-6 py-16">
-        <span className="inline-flex rounded-full bg-indigo-50 text-indigo-700 text-sm px-3 py-1 border border-indigo-100">Decision-support software</span>
-        <h1 className="mt-5 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Structured communication review reports for human review</h1>
-        <p className="mt-5 text-lg text-slate-500 max-w-3xl">LinForensics helps organize chat and message text into cited, audit-friendly communication pattern reports.</p>
-        <div className="mt-8 flex flex-wrap gap-3">
-          <Link to="/pricing" className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium">Start Review</Link>
-          <Link to="/pricing" className="rounded-xl border border-slate-300 bg-white px-5 py-3 font-medium text-slate-700 hover:bg-slate-100">View Pricing</Link>
+      {/* Hero */}
+      <section className="bg-gradient-to-b from-white via-indigo-50/40 to-slate-50">
+        <div className="max-w-5xl mx-auto px-6 py-20 md:py-24">
+          <span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium uppercase tracking-wider px-3 py-1 ring-1 ring-indigo-100">
+            Decision-support software
+          </span>
+          <h1 className="mt-5 text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] text-slate-900 max-w-3xl text-balance">
+            Structured communication review reports for human review
+          </h1>
+          <p className="mt-5 text-lg text-slate-600 max-w-2xl leading-relaxed">
+            LinForensics helps organize chat and message text into cited, audit-friendly communication pattern reports.
+          </p>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Link
+              to="/pricing"
+              className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            >
+              Start Review
+            </Link>
+            <Link
+              to="/pricing"
+              className="rounded-xl border border-slate-200 bg-white/60 hover:bg-white hover:border-slate-300 px-5 py-3 font-medium text-slate-700 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            >
+              View Pricing
+            </Link>
+          </div>
+          <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs uppercase tracking-wider text-slate-500">
+            <span>Cited excerpts</span>
+            <span aria-hidden="true">·</span>
+            <span>Audit-friendly structure</span>
+            <span aria-hidden="true">·</span>
+            <span>Human-reviewable</span>
+          </div>
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-6 pb-10">
-        <h2 className="text-2xl font-semibold">How it works</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-3">
-          {[
-            ['1. Submit message text', 'Paste or upload the chat and message text you want to review.'],
-            ['2. LinForensics organizes the evidence', 'LinForensics identifies cited excerpts and labels candidate communication patterns.'],
-            ['3. Review the structured report', 'Receive an audit-friendly report formatted for independent human review.'],
-          ].map(([title, body]) => (
-            <article key={title} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-              <h3 className="font-semibold text-slate-900">{title}</h3>
-              <p className="mt-2 text-slate-600">{body}</p>
-            </article>
-          ))}
+      {/* How it works */}
+      <section className="bg-slate-50/60 border-y border-slate-200/70">
+        <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
+          <Eyebrow>Process</Eyebrow>
+          <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">How it works</h2>
+          <div className="mt-10 grid gap-4 md:grid-cols-3">
+            {steps.map(([title, body], i) => (
+              <article key={title} className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 h-full flex flex-col">
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white text-sm font-semibold mb-4">
+                  {i + 1}
+                </div>
+                <h3 className="font-semibold text-slate-900">{title}</h3>
+                <p className="mt-2 text-slate-600 leading-relaxed">{body}</p>
+              </article>
+            ))}
+          </div>
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-6 pb-16">
-        <h2 className="text-2xl font-semibold">Report includes</h2>
-        <div className="mt-6 grid gap-4 md:grid-cols-2">
-          <Feature title="Cited evidence snippets" body="Direct excerpts from the submitted text, preserved in context." />
-          <Feature title="Candidate communication pattern labels" body="Patterns are labeled for structured interpretation and independent review." />
-          <Feature title="Audit-friendly structure" body="Report is organized for review by the user or a qualified professional." />
-          <Feature title="Human-review disclaimer" body="Every report includes a clear notice that outputs require independent review." />
-          <Feature title="JSON / report export" body="Structured export formats for downstream use." soon />
+      {/* Report includes */}
+      <section className="bg-white">
+        <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
+          <Eyebrow>Deliverable</Eyebrow>
+          <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">Report includes</h2>
+          <div className="mt-10 grid gap-4 md:grid-cols-2">
+            <Feature title="Cited evidence snippets" body="Direct excerpts from the submitted text, preserved in context." />
+            <Feature title="Candidate communication pattern labels" body="Patterns are labeled for structured interpretation and independent review." />
+            <Feature title="Audit-friendly structure" body="Report is organized for review by the user or a qualified professional." />
+            <Feature title="Human-review disclaimer" body="Every report includes a clear notice that outputs require independent review." />
+            <Feature title="JSON / report export" body="Structured export formats for downstream use." soon />
+          </div>
         </div>
       </section>
     </Layout>
@@ -79,21 +163,174 @@ function HomePage() {
 
 function Feature({ title, body, soon = false }) {
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-      <div className="flex items-center gap-2">
-        <h3 className="font-semibold text-slate-900">{title}</h3>
-        {soon ? <span className="text-xs rounded-full bg-slate-100 text-slate-600 px-2 py-1">coming soon</span> : null}
+    <article className="rounded-2xl bg-white p-5 ring-1 ring-slate-200/70 flex gap-3">
+      <CheckIcon />
+      <div className="flex-1">
+        <div className="flex items-center gap-2 flex-wrap">
+          <h3 className="font-semibold text-slate-900">{title}</h3>
+          {soon ? (
+            <span className="text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 px-2 py-0.5 ring-1 ring-indigo-100">
+              coming soon
+            </span>
+          ) : null}
+        </div>
+        <p className="mt-1.5 text-slate-600 leading-relaxed">{body}</p>
       </div>
-      <p className="mt-2 text-slate-600">{body}</p>
     </article>
   );
 }
 
-function PricingPage() { return <Layout><section className="max-w-3xl mx-auto px-6 py-16"><h1 className="text-4xl font-semibold">Pricing</h1><p className="mt-3 text-slate-500">One clear product. No subscription. Pay once, receive your report.</p><div className="mt-8 rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"><h2 className="text-2xl font-semibold">One Communication Review Report</h2><p className="mt-2 text-4xl font-semibold text-indigo-700">$49.99</p><p className="mt-3 text-slate-600">Purchase includes one self-service communication review report.</p><ul className="mt-4 space-y-2 text-slate-700 list-disc list-inside"><li>Cited evidence snippets from submitted text</li><li>Candidate communication pattern labels</li><li>Audit-friendly structured report</li><li>Human-review disclaimer included</li><li>Self-service delivery</li></ul><a href="https://linforensics.lemonsqueezy.com/checkout/buy/48510123-8132-4ab7-b1e2-9a960b68adb4" target="_blank" rel="noreferrer" className="mt-6 inline-flex rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium">Buy Report</a>{/* TODO: Remove this test-mode checkout note before public launch. */}<p className="mt-3 text-sm text-slate-500">Checkout is currently configured for pre-launch/test-mode validation. Full account-linked checkout will be enabled before public launch.</p></div><div className="mt-8 rounded-xl border border-slate-200 bg-white p-5"><h3 className="font-semibold">Important notice</h3><p className="mt-2 text-slate-600">LinForensics is decision-support software. It does not provide legal advice, medical advice, mental health advice, diagnoses, predictions, emergency support, or automated determinations.</p></div></section></Layout>; }
+function PricingPage() {
+  const included = [
+    'Cited evidence snippets from submitted text',
+    'Candidate communication pattern labels',
+    'Audit-friendly structured report',
+    'Human-review disclaimer included',
+    'Self-service delivery',
+  ];
 
-function TermsPage(){return <Layout><section className="max-w-4xl mx-auto px-6 py-16 space-y-6"><h1 className="text-4xl font-semibold">Terms of Use</h1><p className="text-slate-500">Last updated: May 2026 placeholder, review before public launch</p><div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">Pre-launch notice: These placeholder terms are for development review only. Final terms must be reviewed and published before accepting live public purchases.</div>{sections.terms.map((s)=><article key={s.t} className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="font-semibold text-lg">{s.t}</h2><p className="mt-2 text-slate-700">{s.b}</p></article>)}</section></Layout>;}
-function PrivacyPage(){return <Layout><section className="max-w-4xl mx-auto px-6 py-16 space-y-6"><h1 className="text-4xl font-semibold">Privacy Notice</h1><p className="text-slate-500">Last updated: May 2026 placeholder, complete privacy policy will be published before public launch</p><div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">Pre-launch notice: This placeholder privacy notice is for development review only. A complete privacy policy must be reviewed and published before accepting live public submissions.</div>{sections.privacy.map((s)=><article key={s.t} className="rounded-xl border border-slate-200 bg-white p-5"><h2 className="font-semibold text-lg">{s.t}</h2><p className="mt-2 text-slate-700">{s.b}</p></article>)}<div className="rounded-xl border border-slate-200 bg-slate-100 p-4 text-slate-700">A fuller privacy policy covering specific data practices, retention policies, third-party processors, and user rights will be added before full public launch. This placeholder notice is not a complete or binding privacy policy.</div></section></Layout>;}
-function SuccessPage(){return <Layout><section className="max-w-3xl mx-auto px-6 py-16"><h1 className="text-4xl font-semibold">Payment received.</h1><p className="mt-4 text-slate-700">Your report access will be activated through the LinForensics report system. If automatic access is not yet available, retain your receipt and contact LinForensics support for assistance.</p><p className="mt-6 rounded-xl border border-slate-200 bg-white p-4 text-slate-700">LinForensics is decision-support software. It does not provide legal advice, medical advice, mental health advice, diagnoses, predictions, emergency support, or automated determinations.</p><Link to="/" className="mt-6 inline-flex rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium">Return to home</Link></section></Layout>;}
+  return (
+    <Layout>
+      <section className="bg-gradient-to-b from-white via-indigo-50/40 to-slate-50">
+        <div className="max-w-3xl mx-auto px-6 py-20 md:py-24">
+          <div className="text-center">
+            <Eyebrow>Pricing</Eyebrow>
+            <h1 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Pricing</h1>
+            <p className="mt-3 text-slate-600">
+              One clear product. No subscription. Pay once, receive your report.
+            </p>
+          </div>
+
+          <div className="mt-10 max-w-xl mx-auto rounded-2xl bg-white p-8 ring-1 ring-slate-200 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_24px_rgba(15,23,42,0.06)]">
+            <h2 className="text-xl font-semibold text-slate-900">One Communication Review Report</h2>
+            <p className="mt-1 text-xs uppercase tracking-wider text-slate-500">One-time, self-service</p>
+
+            <div className="mt-5 flex items-baseline gap-2">
+              <span className="text-5xl font-semibold tracking-tight text-slate-900">$49.99</span>
+              <span className="text-sm text-slate-500">per report</span>
+            </div>
+
+            <p className="mt-4 text-slate-600 leading-relaxed">
+              Purchase includes one self-service communication review report.
+            </p>
+
+            <ul className="mt-6 space-y-3 border-t border-slate-100 pt-6">
+              {included.map((item) => (
+                <li key={item} className="flex items-start gap-3 text-slate-700">
+                  <CheckIcon />
+                  <span>{item}</span>
+                </li>
+              ))}
+            </ul>
+
+            <a
+              href="https://linforensics.lemonsqueezy.com/checkout/buy/48510123-8132-4ab7-b1e2-9a960b68adb4"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-7 inline-flex w-full md:w-auto justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            >
+              Buy Report
+            </a>
+
+            {/* TODO: Remove this test-mode checkout note before public launch. */}
+            <div className="mt-4 flex items-center gap-2 flex-wrap">
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 text-amber-800 text-xs font-medium px-3 py-1 ring-1 ring-amber-200/60">
+                <svg className="h-3.5 w-3.5" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+                  <circle cx="10" cy="10" r="7" />
+                  <path d="M10 7v4M10 13.5v.01" strokeLinecap="round" />
+                </svg>
+                Pre-launch
+              </span>
+              <span className="text-xs text-slate-500">Checkout is currently configured for pre-launch/test-mode validation.</span>
+            </div>
+            <p className="mt-3 text-xs text-slate-500 leading-relaxed">
+              Full account-linked checkout will be enabled before public launch.
+            </p>
+          </div>
+
+          <div className="mt-8 max-w-xl mx-auto rounded-2xl bg-slate-50 p-6 ring-1 ring-slate-200/70">
+            <h3 className="font-semibold text-slate-900">Important notice</h3>
+            <p className="mt-2 text-slate-600 leading-relaxed">
+              LinForensics is decision-support software. It does not provide legal advice, medical advice, mental health advice, diagnoses, predictions, emergency support, or automated determinations.
+            </p>
+          </div>
+        </div>
+      </section>
+    </Layout>
+  );
+}
+
+function TermsPage() {
+  return (
+    <Layout>
+      <section className="max-w-4xl mx-auto px-6 py-20 space-y-6">
+        <div>
+          <Eyebrow>Legal</Eyebrow>
+          <h1 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Terms of Use</h1>
+          <p className="mt-3 text-slate-500">Last updated: May 2026 placeholder, review before public launch</p>
+        </div>
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          Pre-launch notice: These placeholder terms are for development review only. Final terms must be reviewed and published before accepting live public purchases.
+        </div>
+        {sections.terms.map((s) => (
+          <article key={s.t} className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70">
+            <h2 className="font-semibold text-lg text-slate-900">{s.t}</h2>
+            <p className="mt-2 text-slate-700 leading-relaxed">{s.b}</p>
+          </article>
+        ))}
+      </section>
+    </Layout>
+  );
+}
+
+function PrivacyPage() {
+  return (
+    <Layout>
+      <section className="max-w-4xl mx-auto px-6 py-20 space-y-6">
+        <div>
+          <Eyebrow>Legal</Eyebrow>
+          <h1 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Privacy Notice</h1>
+          <p className="mt-3 text-slate-500">Last updated: May 2026 placeholder, complete privacy policy will be published before public launch</p>
+        </div>
+        <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          Pre-launch notice: This placeholder privacy notice is for development review only. A complete privacy policy must be reviewed and published before accepting live public submissions.
+        </div>
+        {sections.privacy.map((s) => (
+          <article key={s.t} className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70">
+            <h2 className="font-semibold text-lg text-slate-900">{s.t}</h2>
+            <p className="mt-2 text-slate-700 leading-relaxed">{s.b}</p>
+          </article>
+        ))}
+        <div className="rounded-2xl bg-slate-100 p-4 text-slate-700 ring-1 ring-slate-200/70">
+          A fuller privacy policy covering specific data practices, retention policies, third-party processors, and user rights will be added before full public launch. This placeholder notice is not a complete or binding privacy policy.
+        </div>
+      </section>
+    </Layout>
+  );
+}
+
+function SuccessPage() {
+  return (
+    <Layout>
+      <section className="max-w-3xl mx-auto px-6 py-20">
+        <Eyebrow>Confirmation</Eyebrow>
+        <h1 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Payment received.</h1>
+        <p className="mt-4 text-slate-700 leading-relaxed">
+          Your report access will be activated through the LinForensics report system. If automatic access is not yet available, retain your receipt and contact LinForensics support for assistance.
+        </p>
+        <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200/70 text-slate-700 leading-relaxed">
+          LinForensics is decision-support software. It does not provide legal advice, medical advice, mental health advice, diagnoses, predictions, emergency support, or automated determinations.
+        </div>
+        <Link
+          to="/"
+          className="mt-6 inline-flex rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+        >
+          Return to home
+        </Link>
+      </section>
+    </Layout>
+  );
+}
 
 const sections = {
   terms: [
