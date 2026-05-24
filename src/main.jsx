@@ -691,7 +691,14 @@ function AuthPage(props) {
     }
     const { error: authError } =
       mode === 'signup'
-        ? await supabase.auth.signUp({ email, password })
+        ? await (async () => {
+            const emailRedirectTo = `${window.location.origin}${window.location.pathname}`;
+            return supabase.auth.signUp({
+              email,
+              password,
+              options: { emailRedirectTo },
+            });
+          })()
         : await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
       setError(authError.message);
@@ -757,6 +764,7 @@ function App() {
       <Route path="/success" element={<SuccessPage {...sharedProps} />} />
       <Route path="/auth" element={<AuthPage {...sharedProps} />} />
       <Route path="/app" element={<ReportRunnerPage {...sharedProps} />} />
+      <Route path="*" element={<HomePage {...sharedProps} />} />
     </Routes>
   );
 }
