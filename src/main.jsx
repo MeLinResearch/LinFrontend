@@ -414,6 +414,7 @@ function SuccessPage() {
 
 function parseErrorDetail(body, fallback) {
   if (body && typeof body === 'object' && typeof body.detail === 'string' && body.detail.trim()) return body.detail;
+  if (body && typeof body === 'object' && body.detail && typeof body.detail === 'object' && typeof body.detail.message === 'string' && body.detail.message.trim()) return body.detail.message;
   return fallback;
 }
 
@@ -544,8 +545,11 @@ function ReportRunnerPage(props) {
   }
 
   const sanitized = sanitizeReport(report);
+  const reportSummary = report?.summary && typeof report.summary === 'object' ? report.summary : null;
+  const reportPatternGroups = Array.isArray(report?.pattern_groups) ? report.pattern_groups : [];
+  const isPublicBackendShape = !!(reportSummary && reportPatternGroups.length);
   const items = report?.signals ?? report?.findings ?? report?.items;
-  const visibleTopLevel = [report?.title || report?.headline, report?.summary, report?.tier || report?.status, report?.next_steps, report?.disclaimer].filter(Boolean).length;
+  const visibleTopLevel = [report?.title || report?.headline, typeof report?.summary === 'string' ? report.summary : null, report?.tier || report?.status, report?.next_steps, report?.disclaimer].filter(Boolean).length;
   const hasCards = Array.isArray(items) && items.length > 0;
   const hasStructuredReport = visibleTopLevel > 0 || hasCards;
 
@@ -594,14 +598,55 @@ function ReportRunnerPage(props) {
         {status === 'completed' && report ? (
           <div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 space-y-4">
             <h2 className="text-xl font-semibold text-slate-900">Report</h2>
-            {hasStructuredReport ? (
+            {isPublicBackendShape ? (
+              <>
+                {reportSummary?.overall_level ? <p className="text-slate-700">Status: {reportSummary.overall_level}</p> : null}
+                {reportSummary?.plain_language_summary ? <p className="text-slate-700 whitespace-pre-wrap">{reportSummary.plain_language_summary}</p> : null}
+                {reportSummary?.human_review_required ? <p className="text-sm text-amber-700">Human review is required before relying on this report.</p> : null}
+                <div className="grid gap-3">
+                  {reportPatternGroups.map((group, groupIndex) => (
+                    <article key={`${group.public_category || 'group'}-${groupIndex}`} className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70 space-y-2">
+                      {group?.public_category ? <h3 className="font-semibold text-slate-900">{group.public_category}</h3> : null}
+                      {group?.description ? <p className="text-slate-700">{group.description}</p> : null}
+                      {Array.isArray(group?.examples) && group.examples.length ? (
+                        <div className="space-y-2">
+                          {group.examples.map((example, exampleIndex) => (
+                            <div key={`example-${groupIndex}-${exampleIndex}`} className="rounded-lg bg-white p-3 ring-1 ring-slate-200/70">
+                              {example?.quote_text ? <p className="text-slate-800">“{example.quote_text}”</p> : null}
+                              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                                {example?.speaker_label ? <span>Speaker: {example.speaker_label}</span> : null}
+                                {example?.timestamp ? <span>Timestamp: {example.timestamp}</span> : null}
+                                {example?.message_id ? <span>Message ID: {example.message_id}</span> : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+                {Array.isArray(report?.limitations) && report.limitations.length ? (
+                  <div>
+                    <h3 className="font-semibold text-slate-900">Limitations</h3>
+                    <ul className="mt-2 list-disc pl-6 text-slate-700 space-y-1">
+                      {report.limitations.map((item, idx) => <li key={`limitation-${idx}`}>{item}</li>)}
+                    </ul>
+                  </div>
+                ) : null}
+                {report?.disclaimer ? <p className="text-xs text-slate-500 whitespace-pre-wrap">{report.disclaimer}</p> : null}
+              </>
+            ) : hasStructuredReport ? (
               <>
                 {report?.title || report?.headline ? <h3 className="text-lg font-semibold text-slate-900">{report.title || report.headline}</h3> : null}
-                {report?.summary ? <p className="text-slate-700 whitespace-pre-wrap">{report.summary}</p> : null}
+                {typeof report?.summary === 'string' ? <p className="text-slate-700 whitespace-pre-wrap">{report.summary}</p> : null}
                 {report?.tier || report?.status ? <p className="text-slate-700">Status: {report.tier || report.status}</p> : null}
                 {Array.isArray(items) ? (
                   <div className="grid gap-3 md:grid-cols-2">
-                    {items.map((item, i) => <article key={`${i}-${typeof item === 'object' ? JSON.stringify(item).slice(0, 20) : String(item)}`} className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70 text-slate-700">{typeof item === 'string' ? item : JSON.stringify(item)}</article>)}
+                    {items.map((item, i) => (
+                      <article key={`${i}-${typeof item === 'string' ? item.slice(0, 20) : 'item'}`} className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70 text-slate-700">
+                        {typeof item === 'string' ? item : item?.title || item?.label || item?.summary || 'Item available in technical output.'}
+                      </article>
+                    ))}
                   </div>
                 ) : null}
                 {report?.next_steps ? <p className="text-slate-700 whitespace-pre-wrap">Next steps: {Array.isArray(report.next_steps) ? report.next_steps.join(', ') : report.next_steps}</p> : null}
