@@ -1,7 +1,10 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
-import { BrowserRouter, Link, Route, Routes } from 'react-router-dom';
+import { BrowserRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 import './index.css';
+import { hasSupabaseConfig, supabase } from './supabaseClient';
+
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
 
 function CheckIcon({ className = 'h-5 w-5 text-indigo-600 shrink-0 mt-0.5' }) {
   return (
@@ -24,7 +27,30 @@ function Eyebrow({ children }) {
   return <p className="text-xs font-semibold uppercase tracking-wider text-indigo-700">{children}</p>;
 }
 
-function Layout({ children }) {
+function useAuth() {
+  const [session, setSession] = useState(null);
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => setSession(data.session ?? null));
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, nextSession) => setSession(nextSession));
+    return () => authListener.subscription.unsubscribe();
+  }, []);
+  return { user: session?.user ?? null };
+}
+
+function ConfigError() {
+  const missing = useMemo(() => {
+    const names = [];
+    if (!import.meta.env.VITE_SUPABASE_URL) names.push('VITE_SUPABASE_URL');
+    if (!import.meta.env.VITE_SUPABASE_ANON_KEY) names.push('VITE_SUPABASE_ANON_KEY');
+    if (!import.meta.env.VITE_API_BASE_URL) names.push('VITE_API_BASE_URL');
+    return names;
+  }, []);
+  if (!missing.length) return null;
+  return <p className="mt-4 text-sm text-rose-700">Configuration error: missing {missing.join(', ')}.</p>;
+}
+
+function Layout({ children, user, onSignOut }) {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-slate-200/70">
@@ -39,6 +65,14 @@ function Layout({ children }) {
             <Link to="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
             <Link to="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">Privacy</Link>
             <Link to="/terms" className="text-slate-600 hover:text-slate-900 transition-colors">Terms</Link>
+            {user ? (
+              <>
+                <span className="text-slate-600 hidden md:inline">{user.email}</span>
+                <button onClick={onSignOut} className="text-slate-600 hover:text-slate-900 transition-colors">Sign out</button>
+              </>
+            ) : (
+              <Link to="/auth" className="text-slate-600 hover:text-slate-900 transition-colors">Log in</Link>
+            )}
             <Link
               to="/pricing"
               className="inline-flex items-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
@@ -79,7 +113,7 @@ function Layout({ children }) {
   );
 }
 
-function HomePage() {
+function HomePage(props) {
   const steps = [
     ['Submit message text', 'Paste or upload the chat and message text you want to review.'],
     ['LinForensics organizes the evidence', 'LinForensics identifies cited excerpts and labels candidate communication patterns.'],
@@ -87,7 +121,7 @@ function HomePage() {
   ];
 
   return (
-    <Layout>
+    <Layout {...props}>
             <section className="bg-gradient-to-b from-white via-indigo-50/40 to-slate-50">
         <div className="max-w-5xl mx-auto px-6 py-20 md:py-24">
           <span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium uppercase tracking-wider px-3 py-1 ring-1 ring-indigo-100">
@@ -177,7 +211,11 @@ function Feature({ title, body, soon = false }) {
   );
 }
 
-function PricingPage() {
+function PricingPage(props) {
+  const { user } = props;
+  const navigate = useNavigate();
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
   const included = [
     'Cited evidence snippets from submitted text',
     'Candidate communication pattern labels',
@@ -186,8 +224,55 @@ function PricingPage() {
     'Self-service delivery',
   ];
 
+  async function handleBuy() {
+    setError('');
+    if (!user) {
+      navigate('/auth', { state: { fromBuy: true } });
+      return;
+    }
+    if (!hasSupabaseConfig || !apiBaseUrl || !supabase) {
+      setError('Configuration error: missing VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY, or VITE_API_BASE_URL.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        setError('Please log in again.');
+        return;
+      }
+      const response = await fetch(`${apiBaseUrl}/v1/billing/checkout`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (response.status === 401) {
+        setError('Please log in again.');
+        return;
+      }
+      if (response.status === 503) {
+        setError('Billing is not configured yet.');
+        return;
+      }
+      if (!response.ok) {
+        setError('Checkout failed. Please try again.');
+        return;
+      }
+      const body = await response.json();
+      if (!body.checkout_url) {
+        setError('Checkout failed. Please try again.');
+        return;
+      }
+      window.location.href = body.checkout_url;
+    } catch {
+      setError('Checkout failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
-    <Layout>
+    <Layout {...props}>
       <section className="bg-gradient-to-b from-white via-indigo-50/40 to-slate-50">
         <div className="max-w-3xl mx-auto px-6 py-20 md:py-24">
           <div className="text-center">
@@ -220,14 +305,15 @@ function PricingPage() {
               ))}
             </ul>
 
-            <a
-              href="https://linforensics.lemonsqueezy.com/checkout/buy/48510123-8132-4ab7-b1e2-9a960b68adb4"
-              target="_blank"
-              rel="noreferrer"
+            <button
+              onClick={handleBuy}
+              disabled={loading}
               className="mt-7 inline-flex w-full md:w-auto justify-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
             >
-              Buy Report
-            </a>
+              {loading ? 'Starting checkout...' : 'Buy Report'}
+            </button>
+            {error ? <p className="mt-4 text-sm text-rose-700">{error}</p> : null}
+            <ConfigError />
 
                         <p className="mt-4 text-xs text-slate-500">After purchase, retain your receipt. Report access is handled through the LinForensics report system.</p>
 
@@ -299,9 +385,9 @@ function SuccessPage() {
     <Layout>
       <section className="max-w-3xl mx-auto px-6 py-20">
         <Eyebrow>Confirmation</Eyebrow>
-        <h1 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Payment received.</h1>
+        <h1 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Purchase received.</h1>
         <p className="mt-4 text-slate-700 leading-relaxed">
-          Your report access will be activated through the LinForensics report system. If automatic access is not yet available, retain your receipt and contact LinForensics support for assistance.
+          Purchase received. Your report credit should be available shortly.
         </p>
         <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200/70 text-slate-700 leading-relaxed">
           LinForensics is decision-support software. It does not provide legal advice, medical advice, mental health advice, diagnoses, predictions, emergency support, or automated determinations.
@@ -312,6 +398,60 @@ function SuccessPage() {
         >
           Return to home
         </Link>
+      </section>
+    </Layout>
+  );
+}
+
+function AuthPage(props) {
+  const { user } = props;
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [message, setMessage] = useState('');
+  const navigate = useNavigate();
+  const location = useLocation();
+  const fromBuy = location.state?.fromBuy;
+
+  useEffect(() => {
+    if (user && fromBuy) navigate('/pricing');
+  }, [user, fromBuy, navigate]);
+
+  async function run(mode) {
+    setError('');
+    setMessage('');
+    if (!hasSupabaseConfig || !supabase) {
+      setError('Authentication is not configured yet.');
+      return;
+    }
+    const { error: authError } =
+      mode === 'signup'
+        ? await supabase.auth.signUp({ email, password })
+        : await supabase.auth.signInWithPassword({ email, password });
+    if (authError) {
+      setError(authError.message);
+      return;
+    }
+    setMessage(mode === 'signup' ? 'Account created. Check your email if confirmation is required.' : 'Signed in.');
+  }
+
+  return (
+    <Layout {...props}>
+      <section className="max-w-xl mx-auto px-6 py-20">
+        <Eyebrow>Account</Eyebrow>
+        <h1 className="mt-2 text-4xl font-semibold tracking-tight text-slate-900">Log in or create an account</h1>
+        {fromBuy ? <p className="mt-4 text-sm text-amber-700">Log in or create an account to buy a report.</p> : null}
+        <ConfigError />
+        <div className="mt-6 space-y-4">
+          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" className="w-full rounded-xl border border-slate-300 px-4 py-3" />
+          <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password" className="w-full rounded-xl border border-slate-300 px-4 py-3" />
+          <div className="flex gap-3">
+            <button onClick={() => run('signin')} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium">Log in</button>
+            <button onClick={() => run('signup')} className="rounded-xl border border-slate-300 px-5 py-3 font-medium text-slate-700">Sign up</button>
+          </div>
+          {message ? <p className="text-sm text-emerald-700">{message}</p> : null}
+          {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+        </div>
       </section>
     </Layout>
   );
@@ -337,16 +477,22 @@ const sections = {
   ],
 };
 
-ReactDOM.createRoot(document.getElementById('root')).render(
-  <React.StrictMode>
-    <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route path="/pricing" element={<PricingPage />} />
-        <Route path="/privacy" element={<PrivacyPage />} />
-        <Route path="/terms" element={<TermsPage />} />
-        <Route path="/success" element={<SuccessPage />} />
-      </Routes>
-    </BrowserRouter>
-  </React.StrictMode>,
-);
+function App() {
+  const { user } = useAuth();
+  const onSignOut = async () => {
+    if (supabase) await supabase.auth.signOut();
+  };
+  const sharedProps = { user, onSignOut };
+  return (
+    <Routes>
+      <Route path="/" element={<HomePage {...sharedProps} />} />
+      <Route path="/pricing" element={<PricingPage {...sharedProps} />} />
+      <Route path="/privacy" element={<PrivacyPage {...sharedProps} />} />
+      <Route path="/terms" element={<TermsPage {...sharedProps} />} />
+      <Route path="/success" element={<SuccessPage {...sharedProps} />} />
+      <Route path="/auth" element={<AuthPage {...sharedProps} />} />
+    </Routes>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<React.StrictMode><BrowserRouter><App /></BrowserRouter></React.StrictMode>);
