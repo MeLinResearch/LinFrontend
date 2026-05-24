@@ -65,6 +65,7 @@ function Layout({ children, user, onSignOut }) {
             <Link to="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
             <Link to="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">Privacy</Link>
             <Link to="/terms" className="text-slate-600 hover:text-slate-900 transition-colors">Terms</Link>
+            {user ? <Link to="/app" className="text-slate-600 hover:text-slate-900 transition-colors">Run Report</Link> : null}
             {user ? (
               <>
                 <span className="text-slate-600 hidden md:inline">{user.email}</span>
@@ -392,12 +393,276 @@ function SuccessPage() {
         <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200/70 text-slate-700 leading-relaxed">
           LinForensics is decision-support software. It does not provide legal advice, medical advice, mental health advice, diagnoses, predictions, emergency support, or automated determinations.
         </div>
-        <Link
-          to="/"
-          className="mt-6 inline-flex rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-        >
-          Return to home
-        </Link>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link
+            to="/app"
+            className="inline-flex rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+          >
+            Run Report
+          </Link>
+          <Link
+            to="/"
+            className="inline-flex rounded-xl border border-slate-300 px-5 py-3 font-medium text-slate-700 hover:bg-slate-50 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+          >
+            Return to home
+          </Link>
+        </div>
+      </section>
+    </Layout>
+  );
+}
+
+function parseErrorDetail(body, fallback) {
+  if (body && typeof body === 'object' && typeof body.detail === 'string' && body.detail.trim()) return body.detail;
+  if (body && typeof body === 'object' && body.detail && typeof body.detail === 'object' && typeof body.detail.message === 'string' && body.detail.message.trim()) return body.detail.message;
+  return fallback;
+}
+
+function sanitizeReport(value) {
+  const blocked = ['audit', 'prompt', 'taxonomy', 'scoring', 'severity_table', 'internal', 'debug', 'raw', 'extraction', 'candidates', 'instances', 'version_lock'];
+  if (Array.isArray(value)) return value.map((v) => sanitizeReport(v));
+  if (!value || typeof value !== 'object') return value;
+  return Object.entries(value).reduce((acc, [key, val]) => {
+    const low = key.toLowerCase();
+    if (blocked.some((term) => low.includes(term))) return acc;
+    acc[key] = sanitizeReport(val);
+    return acc;
+  }, {});
+}
+
+function ReportRunnerPage(props) {
+  const { user } = props;
+  const [communicationText, setCommunicationText] = useState('');
+  const [caseNickname, setCaseNickname] = useState('');
+  const [status, setStatus] = useState('idle');
+  const [error, setError] = useState('');
+  const [parsed, setParsed] = useState(null);
+  const [report, setReport] = useState(null);
+  const [acknowledgePartialTimestampCoverage, setAcknowledgePartialTimestampCoverage] = useState(false);
+
+  const warnings = Array.isArray(parsed?.warnings) ? parsed.warnings : [];
+  const requiresPartialTimestampAcknowledgement = warnings.includes('partial_timestamp_coverage');
+
+  async function handleParseUpload() {
+    setError('');
+    setReport(null);
+    const trimmed = communicationText.trim();
+    if (!trimmed) {
+      setError('Communication text is required.');
+      setStatus('error');
+      return;
+    }
+    if (!supabase || !apiBaseUrl) {
+      setError('Configuration error.');
+      setStatus('error');
+      return;
+    }
+    setStatus('parsing');
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) {
+        setError('Please log in again.');
+        setStatus('error');
+        return;
+      }
+      const formData = new FormData();
+      formData.append('pasted_text', trimmed);
+      if (caseNickname.trim()) formData.append('case_nickname', caseNickname.trim());
+      const response = await fetch(`${apiBaseUrl}/v1/reports/upload`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
+      let body = null;
+      try { body = await response.json(); } catch {}
+      if (response.status === 401) throw new Error('Please log in again.');
+      if (response.status === 422) throw new Error(parseErrorDetail(body, 'Upload could not be parsed.'));
+      if (response.status === 413) throw new Error('Upload is too large.');
+      if (!response.ok) throw new Error('Upload failed. Please try again.');
+      setParsed(body);
+      setAcknowledgePartialTimestampCoverage(false);
+      setStatus('parsed');
+    } catch (err) {
+      setError(err.message || 'Upload failed. Please try again.');
+      setStatus('error');
+    }
+  }
+
+  async function handleConfirmAndGenerate() {
+    setError('');
+    if (!parsed?.run_id || !parsed?.parse_fingerprint) {
+      setError('Upload session not found. Please upload again.');
+      setStatus('error');
+      return;
+    }
+    if (!supabase || !apiBaseUrl) {
+      setError('Configuration error.');
+      setStatus('error');
+      return;
+    }
+    setStatus('analyzing');
+    try {
+      const { data } = await supabase.auth.getSession();
+      const accessToken = data.session?.access_token;
+      if (!accessToken) throw new Error('Please log in again.');
+      const response = await fetch(`${apiBaseUrl}/v1/reports/confirm-and-analyze`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          run_id: parsed.run_id,
+          parse_fingerprint: parsed.parse_fingerprint,
+          acknowledge_partial_timestamp_coverage: acknowledgePartialTimestampCoverage,
+        }),
+      });
+      let body = null;
+      try { body = await response.json(); } catch {}
+      if (response.status === 401) throw new Error('Please log in again.');
+      if (response.status === 402) throw new Error('No unused report credit is available. Please buy a report first.');
+      if (response.status === 404) throw new Error('Upload session not found. Please upload again.');
+      if (response.status === 409) throw new Error('Upload changed or expired. Please upload again.');
+      if (response.status === 422) {
+        const detail = typeof body?.detail === 'string' ? body.detail.toLowerCase() : '';
+        if (detail.includes('acknowledge') || detail.includes('partial')) throw new Error('Please check the acknowledgement box.');
+        throw new Error('Report generation failed. Please try again.');
+      }
+      if (response.status === 503) throw new Error('Report generation is not configured yet.');
+      if (!response.ok) throw new Error('Report generation failed. Please try again.');
+      setReport(body?.report ?? body);
+      setStatus('completed');
+    } catch (err) {
+      setError(err.message || 'Report generation failed. Please try again.');
+      setStatus('error');
+    }
+  }
+
+  if (!user) {
+    return (
+      <Layout {...props}>
+        <section className="max-w-3xl mx-auto px-6 py-20">
+          <h1 className="text-4xl font-semibold tracking-tight text-slate-900">Run Report</h1>
+          <p className="mt-4 text-slate-700">You need to log in before running a report.</p>
+          <Link to="/auth" className="mt-6 inline-flex rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium">Go to log in</Link>
+        </section>
+      </Layout>
+    );
+  }
+
+  const sanitized = sanitizeReport(report);
+  const reportSummary = report?.summary && typeof report.summary === 'object' ? report.summary : null;
+  const reportPatternGroups = Array.isArray(report?.pattern_groups) ? report.pattern_groups : [];
+  const isPublicBackendShape = !!(reportSummary && reportPatternGroups.length);
+  const items = report?.signals ?? report?.findings ?? report?.items;
+  const visibleTopLevel = [report?.title || report?.headline, typeof report?.summary === 'string' ? report.summary : null, report?.tier || report?.status, report?.next_steps, report?.disclaimer].filter(Boolean).length;
+  const hasCards = Array.isArray(items) && items.length > 0;
+  const hasStructuredReport = visibleTopLevel > 0 || hasCards;
+
+  return (
+    <Layout {...props}>
+      <section className="max-w-4xl mx-auto px-6 py-16 space-y-6">
+        <h1 className="text-4xl font-semibold tracking-tight text-slate-900">Run Report</h1>
+        <div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 space-y-4">
+          <label className="block">
+            <span className="text-sm font-medium text-slate-800">Communication text</span>
+            <textarea value={communicationText} onChange={(e) => setCommunicationText(e.target.value)} placeholder="Paste the conversation text you want reviewed." className="mt-2 w-full min-h-40 rounded-xl border border-slate-300 px-4 py-3" />
+          </label>
+          <label className="block">
+            <span className="text-sm font-medium text-slate-800">Case nickname (optional)</span>
+            <input value={caseNickname} onChange={(e) => setCaseNickname(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3" />
+          </label>
+          <button onClick={handleParseUpload} disabled={status === 'parsing' || status === 'analyzing'} className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium disabled:opacity-70">
+            {status === 'parsing' ? 'Parsing...' : 'Parse Upload'}
+          </button>
+          <p className="text-xs text-slate-500">State: {status}</p>
+          {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+        </div>
+
+        {parsed ? (
+          <div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 space-y-2">
+            <h2 className="text-xl font-semibold text-slate-900">Parse Review</h2>
+            <p className="text-slate-700">message_count: {parsed.message_count ?? 'n/a'}</p>
+            <p className="text-slate-700">speaker_count: {parsed.speaker_count ?? 'n/a'}</p>
+            <p className="text-slate-700">speakers: {Array.isArray(parsed.speakers) ? parsed.speakers.join(', ') : 'n/a'}</p>
+            <p className="text-slate-700">timestamp_coverage: {parsed.timestamp_coverage ?? 'n/a'}</p>
+            {parsed.date_range ? <p className="text-slate-700">date_range: {typeof parsed.date_range === 'string' ? parsed.date_range : JSON.stringify(parsed.date_range)}</p> : null}
+            {warnings.length ? <p className="text-slate-700">warnings: {warnings.join(', ')}</p> : null}
+            {parsed.preview ? <p className="text-slate-700 whitespace-pre-wrap">preview: {typeof parsed.preview === 'string' ? parsed.preview : JSON.stringify(parsed.preview)}</p> : null}
+            {requiresPartialTimestampAcknowledgement ? (
+              <label className="flex items-start gap-2 mt-2">
+                <input type="checkbox" checked={acknowledgePartialTimestampCoverage} onChange={(e) => setAcknowledgePartialTimestampCoverage(e.target.checked)} className="mt-1" />
+                <span className="text-sm text-slate-700">I understand some timestamps may be missing or incomplete.</span>
+              </label>
+            ) : null}
+            <button onClick={handleConfirmAndGenerate} disabled={status === 'analyzing' || status === 'parsing'} className="mt-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium disabled:opacity-70">
+              {status === 'analyzing' ? 'Generating...' : 'Confirm and Generate Report'}
+            </button>
+          </div>
+        ) : null}
+
+        {status === 'completed' && report ? (
+          <div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 space-y-4">
+            <h2 className="text-xl font-semibold text-slate-900">Report</h2>
+            {isPublicBackendShape ? (
+              <>
+                {reportSummary?.overall_level ? <p className="text-slate-700">Status: {reportSummary.overall_level}</p> : null}
+                {reportSummary?.plain_language_summary ? <p className="text-slate-700 whitespace-pre-wrap">{reportSummary.plain_language_summary}</p> : null}
+                {reportSummary?.human_review_required ? <p className="text-sm text-amber-700">Human review is required before relying on this report.</p> : null}
+                <div className="grid gap-3">
+                  {reportPatternGroups.map((group, groupIndex) => (
+                    <article key={`${group.public_category || 'group'}-${groupIndex}`} className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70 space-y-2">
+                      {group?.public_category ? <h3 className="font-semibold text-slate-900">{group.public_category}</h3> : null}
+                      {group?.description ? <p className="text-slate-700">{group.description}</p> : null}
+                      {Array.isArray(group?.examples) && group.examples.length ? (
+                        <div className="space-y-2">
+                          {group.examples.map((example, exampleIndex) => (
+                            <div key={`example-${groupIndex}-${exampleIndex}`} className="rounded-lg bg-white p-3 ring-1 ring-slate-200/70">
+                              {example?.quote_text ? <p className="text-slate-800">“{example.quote_text}”</p> : null}
+                              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
+                                {example?.speaker_label ? <span>Speaker: {example.speaker_label}</span> : null}
+                                {example?.timestamp ? <span>Timestamp: {example.timestamp}</span> : null}
+                                {example?.message_id ? <span>Message ID: {example.message_id}</span> : null}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : null}
+                    </article>
+                  ))}
+                </div>
+                {Array.isArray(report?.limitations) && report.limitations.length ? (
+                  <div>
+                    <h3 className="font-semibold text-slate-900">Limitations</h3>
+                    <ul className="mt-2 list-disc pl-6 text-slate-700 space-y-1">
+                      {report.limitations.map((item, idx) => <li key={`limitation-${idx}`}>{item}</li>)}
+                    </ul>
+                  </div>
+                ) : null}
+                {report?.disclaimer ? <p className="text-xs text-slate-500 whitespace-pre-wrap">{report.disclaimer}</p> : null}
+              </>
+            ) : hasStructuredReport ? (
+              <>
+                {report?.title || report?.headline ? <h3 className="text-lg font-semibold text-slate-900">{report.title || report.headline}</h3> : null}
+                {typeof report?.summary === 'string' ? <p className="text-slate-700 whitespace-pre-wrap">{report.summary}</p> : null}
+                {report?.tier || report?.status ? <p className="text-slate-700">Status: {report.tier || report.status}</p> : null}
+                {Array.isArray(items) ? (
+                  <div className="grid gap-3 md:grid-cols-2">
+                    {items.map((item, i) => (
+                      <article key={`${i}-${typeof item === 'string' ? item.slice(0, 20) : 'item'}`} className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70 text-slate-700">
+                        {typeof item === 'string' ? item : item?.title || item?.label || item?.summary || 'Item available in technical output.'}
+                      </article>
+                    ))}
+                  </div>
+                ) : null}
+                {report?.next_steps ? <p className="text-slate-700 whitespace-pre-wrap">Next steps: {Array.isArray(report.next_steps) ? report.next_steps.join(', ') : report.next_steps}</p> : null}
+                {report?.disclaimer ? <p className="text-xs text-slate-500 whitespace-pre-wrap">{report.disclaimer}</p> : null}
+              </>
+            ) : (
+              <>
+                <p className="text-slate-700">Report generated successfully.</p>
+                <details className="rounded-xl bg-slate-50 p-4 ring-1 ring-slate-200/70">
+                  <summary className="cursor-pointer font-medium text-slate-800">Technical report output</summary>
+                  <pre className="mt-3 text-xs overflow-auto text-slate-700">{JSON.stringify(sanitized, null, 2)}</pre>
+                </details>
+              </>
+            )}
+          </div>
+        ) : null}
       </section>
     </Layout>
   );
@@ -491,6 +756,7 @@ function App() {
       <Route path="/terms" element={<TermsPage {...sharedProps} />} />
       <Route path="/success" element={<SuccessPage {...sharedProps} />} />
       <Route path="/auth" element={<AuthPage {...sharedProps} />} />
+      <Route path="/app" element={<ReportRunnerPage {...sharedProps} />} />
     </Routes>
   );
 }
