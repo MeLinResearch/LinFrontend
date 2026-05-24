@@ -579,7 +579,13 @@ function ReportRunnerPage(props) {
             <p className="text-slate-700">message_count: {parsed.message_count ?? 'n/a'}</p>
             <p className="text-slate-700">speaker_count: {parsed.speaker_count ?? 'n/a'}</p>
             <p className="text-slate-700">speakers: {Array.isArray(parsed.speakers) ? parsed.speakers.join(', ') : 'n/a'}</p>
-            <p className="text-slate-700">timestamp_coverage: {parsed.timestamp_coverage ?? 'n/a'}</p>
+            <p className="text-slate-700">
+              timestamp_coverage: {parsed.timestamp_coverage == null
+                ? 'n/a'
+                : (typeof parsed.timestamp_coverage === 'string' || typeof parsed.timestamp_coverage === 'number' || typeof parsed.timestamp_coverage === 'boolean')
+                    ? String(parsed.timestamp_coverage)
+                    : JSON.stringify(parsed.timestamp_coverage)}
+            </p>
             {parsed.date_range ? <p className="text-slate-700">date_range: {typeof parsed.date_range === 'string' ? parsed.date_range : JSON.stringify(parsed.date_range)}</p> : null}
             {warnings.length ? <p className="text-slate-700">warnings: {warnings.join(', ')}</p> : null}
             {parsed.preview ? <p className="text-slate-700 whitespace-pre-wrap">preview: {typeof parsed.preview === 'string' ? parsed.preview : JSON.stringify(parsed.preview)}</p> : null}
