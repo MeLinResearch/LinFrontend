@@ -424,8 +424,10 @@ function AuthPage(props) {
       setError('Authentication is not configured yet.');
       return;
     }
-    const action = mode === 'signup' ? supabase.auth.signUp : supabase.auth.signInWithPassword;
-    const { error: authError } = await action({ email, password });
+    const { error: authError } =
+      mode === 'signup'
+        ? await supabase.auth.signUp({ email, password })
+        : await supabase.auth.signInWithPassword({ email, password });
     if (authError) {
       setError(authError.message);
       return;
