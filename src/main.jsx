@@ -215,6 +215,7 @@ function Feature({ title, body, soon = false }) {
 function PricingPage(props) {
   const { user } = props;
   const navigate = useNavigate();
+  const location = useLocation();
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const included = [
@@ -271,6 +272,10 @@ function PricingPage(props) {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    if (location.state?.autoBuy && user) handleBuy();
+  }, []);
 
   return (
     <Layout {...props}>
@@ -332,9 +337,9 @@ function PricingPage(props) {
   );
 }
 
-function TermsPage() {
+function TermsPage(props) {
   return (
-    <Layout>
+    <Layout {...props}>
       <section className="max-w-4xl mx-auto px-6 py-20 space-y-6">
         <div>
           <Eyebrow>Legal</Eyebrow>
@@ -355,9 +360,9 @@ function TermsPage() {
   );
 }
 
-function PrivacyPage() {
+function PrivacyPage(props) {
   return (
-    <Layout>
+    <Layout {...props}>
       <section className="max-w-4xl mx-auto px-6 py-20 space-y-6">
         <div>
           <Eyebrow>Legal</Eyebrow>
@@ -381,9 +386,9 @@ function PrivacyPage() {
   );
 }
 
-function SuccessPage() {
+function SuccessPage(props) {
   return (
-    <Layout>
+    <Layout {...props}>
       <section className="max-w-3xl mx-auto px-6 py-20">
         <Eyebrow>Confirmation</Eyebrow>
         <h1 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Purchase received.</h1>
@@ -685,7 +690,7 @@ function AuthPage(props) {
   const fromBuy = location.state?.fromBuy;
 
   useEffect(() => {
-    if (user && fromBuy) navigate('/pricing');
+    if (user && fromBuy) navigate('/pricing', { state: { autoBuy: true } });
   }, [user, fromBuy, navigate]);
 
   async function run(mode) {
@@ -698,7 +703,7 @@ function AuthPage(props) {
     const { error: authError } =
       mode === 'signup'
         ? await (async () => {
-            const emailRedirectTo = `${window.location.origin}${window.location.pathname}`;
+            const emailRedirectTo = `${window.location.origin}${window.location.pathname}#/auth`;
             return supabase.auth.signUp({
               email,
               password,
