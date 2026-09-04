@@ -1,12 +1,14 @@
-<!doctype html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Inside a LinForensics report</title>
-<meta name="description" content="An annotated example of the communication pattern report LinForensics produces.">
+// GENERATED FILE - do not edit by hand.
+//
+// Rendered by reports/generate_sample_report.py in the LinForensics engine
+// repository, from real engine output. To change the report, regenerate it
+// there; edits made here are overwritten on the next build.
+//
+// The markup is trusted, generated content: it is safe to inject, and it
+// contains no taxonomy codes, scoring versions or model names (enforced by
+// tests/test_sample_report_redaction.py in that repository).
 
-<style>
+export const REPORT_CSS = `
 :root {
     color-scheme: light;
     --lf-indigo: #4F46E5;
@@ -40,52 +42,12 @@
 }
 
 
-* { box-sizing: border-box; }
-body {
-    margin: 0; font-family: var(--lf-font); font-size: 16px; line-height: 1.6;
-    color: var(--lf-body);
-    background:
-        radial-gradient(1100px 480px at 14% -10%, var(--lf-indigo-tint) 0%, rgba(245,246,255,0) 60%),
-        linear-gradient(180deg, var(--lf-surface) 0%, var(--lf-canvas) 100%);
-    background-attachment: fixed;
+.lf-embed, .lf-embed * { box-sizing: border-box; }
+.lf-embed {
+    /* inherit, so the report always tracks the host page's typography */
+    font-family: inherit; font-size: 16px; line-height: 1.6; color: var(--lf-body);
     -webkit-font-smoothing: antialiased;
 }
-.lf-shell { max-width: 1240px; margin: 0 auto; padding: 0 28px 84px; }
-
-.lf-bar {
-    display: flex; align-items: center; justify-content: space-between; gap: 20px;
-    padding: 22px 0 20px; border-bottom: 1px solid var(--lf-line);
-}
-.lf-brand { display: flex; align-items: center; gap: 11px; }
-.lf-mark {
-    width: 30px; height: 30px; border-radius: 9px; flex: none; display: grid; place-items: center;
-    background: linear-gradient(160deg, var(--lf-indigo) 0%, var(--lf-indigo-deep) 100%);
-}
-.lf-wordmark { font-weight: 700; font-size: 17px; letter-spacing: -.015em; color: var(--lf-ink); }
-.lf-bar-meta { display: flex; align-items: center; gap: 18px; font-size: 13px; color: var(--lf-muted); }
-.lf-back { color: var(--lf-indigo-strong); font-weight: 600; text-decoration: none; }
-.lf-back:hover { text-decoration: underline; }
-.lf-back:focus-visible { outline: 2px solid var(--lf-indigo); outline-offset: 3px; border-radius: 4px; }
-
-.lf-intro { padding: 58px 0 8px; max-width: 720px; }
-.lf-badge {
-    display: inline-block; padding: 6px 14px; border-radius: 999px;
-    background: var(--lf-indigo-soft); color: var(--lf-indigo-strong);
-    font-size: 11.5px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase;
-}
-h1 {
-    margin: 22px 0 0; font-size: clamp(33px, 5vw, 50px); line-height: 1.08;
-    letter-spacing: -.032em; font-weight: 800; color: var(--lf-ink);
-}
-.lf-lede { margin: 18px 0 0; font-size: 18px; max-width: 640px; }
-footer {
-    margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--lf-line);
-    font-size: 13px; color: var(--lf-faint);
-}
-@media (max-width: 720px) {
-    .lf-shell { padding: 0 16px 60px; }
-}
-@media print { body { background: #fff; } }
 
 
 .lf-doc {
@@ -232,25 +194,9 @@ footer {
     .lf-callout { position: static !important; width: auto !important; }
 }
 @media print { .lf-wires, .lf-callout { display: none; } }
-</style>
-</head>
-<body>
-<div class="lf-shell">
-  <header class="lf-bar">
-    <div class="lf-brand">
-      <span class="lf-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5.2c0 4.4-2.9 8.2-7 9.4-4.1-1.2-7-5-7-9.4V6l7-3z" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.8 12.1l2.2 2.2 4.2-4.4" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
-      <span class="lf-wordmark">LinForensics</span>
-    </div>
-    <div class="lf-bar-meta"><a class="lf-back" href="https://liforensics.com/">&larr; Back to LinForensics</a>Sample &middot; 04 September 2026</div>
-  </header>
+`;
 
-  <div class="lf-intro">
-    <span class="lf-badge">What you receive</span>
-    <h1>Inside a LinForensics report</h1>
-    <p class="lf-lede">This is a complete sample report, produced by the same analysis engine that runs on your file. The notes around it explain what each part is and why it is there.</p>
-  </div>
-
-  <div class="lf-stage"><svg class="lf-wires" aria-hidden="true" preserveAspectRatio="none"></svg><div class="lf-stage-doc">
+export const REPORT_HTML = `<div class="lf-stage"><svg class="lf-wires" aria-hidden="true" preserveAspectRatio="none"></svg><div class="lf-stage-doc">
 <article class="lf-doc">
   <div class="lf-doc-head">
     <div>
@@ -301,7 +247,11 @@ footer {
     </div>
   </div>
 </article>
-</div><div class="lf-notes"><aside class="lf-callout" data-anchor="a-level" data-side="left"><span class="n">1</span><h4>One plain-English level</h4><p>No score, no verdict, no diagnosis. Just where this conversation sits on a four-level scale, in words anyone can act on.</p></aside><aside class="lf-callout" data-anchor="a-group" data-side="right"><span class="n">2</span><h4>Candidate communication pattern labels</h4><p>Patterns are grouped into plain categories you can read out loud — pressure, restriction, compliance — for structured interpretation and independent review.</p></aside><aside class="lf-callout" data-anchor="a-quote" data-side="left"><span class="n">3</span><h4>Cited evidence snippets</h4><p>Every finding quotes the submitted text directly, preserved in context. Nothing is paraphrased, summarised or invented.</p></aside><aside class="lf-callout" data-anchor="a-meta" data-side="right"><span class="n">4</span><h4>Traceable to your original</h4><p>Who said it and when travels with every excerpt, so you can find the same line in your own export in seconds.</p></aside><aside class="lf-callout" data-anchor="a-prov" data-side="left"><span class="n">5</span><h4>Audit-friendly structure</h4><p>Each report is stamped with the file it came from, when it arrived and which report format produced it, so it can be checked later by a reviewer.</p></aside><aside class="lf-callout" data-anchor="a-steps" data-side="right"><span class="n">6</span><h4>Practical next steps</h4><p>Concrete, non-alarming actions matched to the level found — what to do next, not what to conclude.</p></aside><aside class="lf-callout" data-anchor="a-limits" data-side="left"><span class="n">7</span><h4>Human-review disclaimer</h4><p>Stated limits and a clear notice on every report that outputs require independent review by you or a qualified professional.</p></aside></div></div><script>
+</div><div class="lf-notes"><aside class="lf-callout" data-anchor="a-level" data-side="left"><span class="n">1</span><h4>One plain-English level</h4><p>No score, no verdict, no diagnosis. Just where this conversation sits on a four-level scale, in words anyone can act on.</p></aside><aside class="lf-callout" data-anchor="a-group" data-side="right"><span class="n">2</span><h4>Candidate communication pattern labels</h4><p>Patterns are grouped into plain categories you can read out loud — pressure, restriction, compliance — for structured interpretation and independent review.</p></aside><aside class="lf-callout" data-anchor="a-quote" data-side="left"><span class="n">3</span><h4>Cited evidence snippets</h4><p>Every finding quotes the submitted text directly, preserved in context. Nothing is paraphrased, summarised or invented.</p></aside><aside class="lf-callout" data-anchor="a-meta" data-side="right"><span class="n">4</span><h4>Traceable to your original</h4><p>Who said it and when travels with every excerpt, so you can find the same line in your own export in seconds.</p></aside><aside class="lf-callout" data-anchor="a-prov" data-side="left"><span class="n">5</span><h4>Audit-friendly structure</h4><p>Each report is stamped with the file it came from, when it arrived and which report format produced it, so it can be checked later by a reviewer.</p></aside><aside class="lf-callout" data-anchor="a-steps" data-side="right"><span class="n">6</span><h4>Practical next steps</h4><p>Concrete, non-alarming actions matched to the level found — what to do next, not what to conclude.</p></aside><aside class="lf-callout" data-anchor="a-limits" data-side="left"><span class="n">7</span><h4>Human-review disclaimer</h4><p>Stated limits and a clear notice on every report that outputs require independent review by you or a qualified professional.</p></aside></div></div>`;
+
+export { initReportWires };
+
+
 function initReportWires(stage) {
   if (!stage) return function () {};
   var svg = stage.querySelector('.lf-wires');
@@ -398,16 +348,3 @@ function initReportWires(stage) {
   };
 }
 
-(function () {
-  initReportWires(document.querySelector('.lf-stage'));
-})();
-</script>
-
-  <footer>
-    <p>Sample content is synthetic and does not describe any real person or conversation.
-    LinForensics is decision-support software. It does not provide legal advice, medical advice,
-    mental health advice, diagnoses, predictions, emergency support or automated determinations.</p>
-  </footer>
-</div>
-</body>
-</html>
