@@ -163,16 +163,40 @@ function HomePage(props) {
         </div>
       </section>
 
-            <section className="bg-white border-t border-slate-200/70">
-        <div className="max-w-7xl mx-auto px-6 py-16 md:py-20">
-          <Eyebrow>Deliverable</Eyebrow>
-          <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
-            What your report looks like
-          </h2>
-          <p className="mt-4 text-slate-600 leading-relaxed max-w-2xl">
-            A complete example of what you receive. The notes point to where each part sits in
-            the report. Sample content is synthetic.
-          </p>
+            <section className="bg-slate-50/60 border-y border-slate-200/70">
+        <div className="max-w-5xl mx-auto px-6 py-10 md:py-12">
+          <div className="text-center">
+            <Eyebrow>Process</Eyebrow>
+            <h2 className="mt-2 text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">How it works</h2>
+          </div>
+          <div className="mt-6 grid gap-4 md:grid-cols-3">
+            {steps.map(([title, body], i) => (
+              <article key={title} className="rounded-2xl bg-white p-5 ring-1 ring-slate-200/70 h-full flex items-start gap-3">
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white text-xs font-semibold">
+                  {i + 1}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-slate-900">{title}</h3>
+                  <p className="mt-1 text-sm text-slate-600 leading-relaxed">{body}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+            <section className="bg-white">
+        <div className="max-w-7xl mx-auto px-6 py-12 md:py-16">
+          <div className="text-center">
+            <Eyebrow>Deliverable</Eyebrow>
+            <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
+              What your report looks like
+            </h2>
+            <p className="mt-4 text-slate-600 leading-relaxed max-w-2xl mx-auto">
+              A complete example of what you receive. The notes point to where each part sits in
+              the report. Sample content is synthetic.
+            </p>
+          </div>
 
           <div className="mt-12">
             <SampleReport />
@@ -216,23 +240,6 @@ function HomePage(props) {
         </div>
       </section>
 
-            <section className="bg-slate-50/60 border-b border-slate-200/70">
-        <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
-          <Eyebrow>Process</Eyebrow>
-          <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">How it works</h2>
-          <div className="mt-10 grid gap-4 md:grid-cols-3">
-            {steps.map(([title, body], i) => (
-              <article key={title} className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 h-full flex flex-col">
-                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-600 text-white text-sm font-semibold mb-4">
-                  {i + 1}
-                </div>
-                <h3 className="font-semibold text-slate-900">{title}</h3>
-                <p className="mt-2 text-slate-600 leading-relaxed">{body}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
     </Layout>
   );
 }
