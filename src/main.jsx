@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { HashRouter, Link, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
+import { REPORT_CSS, REPORT_HTML, initReportWires } from './sampleReport.generated.js';
 import './index.css';
 import { hasSupabaseConfig, supabase } from './supabaseClient';
 
@@ -20,6 +21,24 @@ function ShieldIcon({ className = 'h-4 w-4 text-white' }) {
       <path strokeLinecap="round" strokeLinejoin="round" d="M10 2l6 2v5c0 4-2.5 7-6 9-3.5-2-6-5-6-9V4l6-2z" />
       <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 10l1.5 1.5L13 7.5" />
     </svg>
+  );
+}
+
+function SampleReport() {
+  const hostRef = React.useRef(null);
+
+  React.useEffect(() => {
+    const stage = hostRef.current && hostRef.current.querySelector('.lf-stage');
+    return initReportWires(stage);
+  }, []);
+
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: REPORT_CSS }} />
+      {/* Generated, trusted markup from the engine repository - see
+          src/sampleReport.generated.js. Not user input. */}
+      <div ref={hostRef} className="lf-embed" dangerouslySetInnerHTML={{ __html: REPORT_HTML }} />
+    </>
   );
 }
 
@@ -134,7 +153,53 @@ function HomePage(props) {
           <p className="mt-5 text-lg text-slate-600 max-w-2xl leading-relaxed">
             LinForensics helps organize chat and message text into cited, audit-friendly communication pattern reports.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs uppercase tracking-wider text-slate-500">
+            <span>Cited excerpts</span>
+            <span aria-hidden="true">·</span>
+            <span>Audit-friendly structure</span>
+            <span aria-hidden="true">·</span>
+            <span>Human-reviewable</span>
+          </div>
+        </div>
+      </section>
+
+            <section className="bg-white border-t border-slate-200/70">
+        <div className="max-w-7xl mx-auto px-6 py-16 md:py-20">
+          <Eyebrow>Deliverable</Eyebrow>
+          <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
+            What your report looks like
+          </h2>
+          <p className="mt-4 text-slate-600 leading-relaxed max-w-2xl">
+            A complete example of what you receive. The notes point to where each part sits in
+            the report. Sample content is synthetic.
+          </p>
+
+          <div className="mt-12">
+            <SampleReport />
+          </div>
+
+          <p className="mt-12 text-sm text-slate-500">
+            Structured JSON export for downstream use is coming soon.{' '}
+            <a
+              href="/sample-report.html"
+              className="text-indigo-700 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded"
+            >
+              Open this sample in its own page
+            </a>
+            .
+          </p>
+        </div>
+      </section>
+
+            <section className="bg-gradient-to-b from-indigo-50/50 to-white border-y border-slate-200/70">
+        <div className="max-w-5xl mx-auto px-6 py-16 md:py-20 text-center">
+          <h2 className="text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
+            Run a review on your own messages
+          </h2>
+          <p className="mt-4 text-slate-600 leading-relaxed max-w-xl mx-auto">
+            Paste or upload the text you want reviewed and get a report in the same format.
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link
               to="/pricing"
               className="rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
@@ -148,17 +213,10 @@ function HomePage(props) {
               View Pricing
             </Link>
           </div>
-          <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs uppercase tracking-wider text-slate-500">
-            <span>Cited excerpts</span>
-            <span aria-hidden="true">·</span>
-            <span>Audit-friendly structure</span>
-            <span aria-hidden="true">·</span>
-            <span>Human-reviewable</span>
-          </div>
         </div>
       </section>
 
-            <section className="bg-slate-50/60 border-y border-slate-200/70">
+            <section className="bg-slate-50/60 border-b border-slate-200/70">
         <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
           <Eyebrow>Process</Eyebrow>
           <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">How it works</h2>
@@ -175,56 +233,7 @@ function HomePage(props) {
           </div>
         </div>
       </section>
-
-            <section className="bg-white">
-        <div className="max-w-5xl mx-auto px-6 py-16 md:py-20">
-          <Eyebrow>Deliverable</Eyebrow>
-          <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">Report includes</h2>
-          <div className="mt-10 grid gap-4 md:grid-cols-2">
-            <Feature title="Cited evidence snippets" body="Direct excerpts from the submitted text, preserved in context." />
-            <Feature title="Candidate communication pattern labels" body="Patterns are labeled for structured interpretation and independent review." />
-            <Feature title="Audit-friendly structure" body="Report is organized for review by the user or a qualified professional." />
-            <Feature title="Human-review disclaimer" body="Every report includes a clear notice that outputs require independent review." />
-            <Feature title="JSON / report export" body="Structured export formats for downstream use." soon />
-          </div>
-
-          <div className="mt-10 rounded-2xl bg-slate-50 ring-1 ring-slate-200/70 p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6">
-            <div className="flex-1">
-              <h3 className="text-xl font-semibold tracking-tight text-slate-900">See a complete sample report</h3>
-              <p className="mt-2 text-slate-600 leading-relaxed max-w-xl">
-                A full example of what you receive, annotated to explain what each section is and why
-                it is there. The sample content is synthetic.
-              </p>
-            </div>
-            <a
-              href="/sample-report.html"
-              className="shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
-            >
-              View sample report
-            </a>
-          </div>
-        </div>
-      </section>
     </Layout>
-  );
-}
-
-function Feature({ title, body, soon = false }) {
-  return (
-    <article className="rounded-2xl bg-white p-5 ring-1 ring-slate-200/70 flex gap-3">
-      <CheckIcon />
-      <div className="flex-1">
-        <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-slate-900">{title}</h3>
-          {soon ? (
-            <span className="text-xs font-medium rounded-full bg-indigo-50 text-indigo-700 px-2 py-0.5 ring-1 ring-indigo-100">
-              coming soon
-            </span>
-          ) : null}
-        </div>
-        <p className="mt-1.5 text-slate-600 leading-relaxed">{body}</p>
-      </div>
-    </article>
   );
 }
 
