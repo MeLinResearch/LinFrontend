@@ -187,6 +187,22 @@ function HomePage(props) {
             <Feature title="Human-review disclaimer" body="Every report includes a clear notice that outputs require independent review." />
             <Feature title="JSON / report export" body="Structured export formats for downstream use." soon />
           </div>
+
+          <div className="mt-10 rounded-2xl bg-slate-50 ring-1 ring-slate-200/70 p-6 md:p-8 flex flex-col md:flex-row md:items-center gap-6">
+            <div className="flex-1">
+              <h3 className="text-xl font-semibold tracking-tight text-slate-900">See a complete sample report</h3>
+              <p className="mt-2 text-slate-600 leading-relaxed max-w-xl">
+                A full example of what you receive, annotated to explain what each section is and why
+                it is there. The sample content is synthetic.
+              </p>
+            </div>
+            <a
+              href="/sample-report.html"
+              className="shrink-0 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+            >
+              View sample report
+            </a>
+          </div>
         </div>
       </section>
     </Layout>
