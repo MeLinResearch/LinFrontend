@@ -73,29 +73,32 @@ function Layout({ children, user, onSignOut }) {
   return (
     <div className="min-h-screen flex flex-col">
       <header className="sticky top-0 z-40 bg-white/80 backdrop-blur border-b border-slate-200/70">
-        <nav className="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-2">
+        <nav className="max-w-5xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between gap-3">
+          <Link to="/" className="flex items-center gap-2 shrink-0">
             <span className="inline-flex h-7 w-7 items-center justify-center rounded-lg bg-indigo-600">
               <ShieldIcon />
             </span>
-            <span className="text-lg font-semibold tracking-tight text-slate-900">LinForensics</span>
+            <span className="text-base sm:text-lg font-semibold tracking-tight text-slate-900">LinForensics</span>
           </Link>
-          <div className="flex items-center gap-6 text-sm">
-            <Link to="/pricing" className="text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
-            <Link to="/privacy" className="text-slate-600 hover:text-slate-900 transition-colors">Privacy</Link>
-            <Link to="/terms" className="text-slate-600 hover:text-slate-900 transition-colors">Terms</Link>
+          {/* Pricing, Privacy and Terms are hidden below sm - they would push the
+              row past the viewport on a phone, and the footer carries all three.
+              Log in and Start Review stay visible at every width. */}
+          <div className="flex items-center gap-4 sm:gap-6 text-sm">
+            <Link to="/pricing" className="hidden sm:inline text-slate-600 hover:text-slate-900 transition-colors">Pricing</Link>
+            <Link to="/privacy" className="hidden sm:inline text-slate-600 hover:text-slate-900 transition-colors">Privacy</Link>
+            <Link to="/terms" className="hidden sm:inline text-slate-600 hover:text-slate-900 transition-colors">Terms</Link>
             {user ? <Link to="/app" className="text-slate-600 hover:text-slate-900 transition-colors">Run Report</Link> : null}
             {user ? (
               <>
                 <span className="text-slate-600 hidden md:inline">{user.email}</span>
-                <button onClick={onSignOut} className="text-slate-600 hover:text-slate-900 transition-colors">Sign out</button>
+                <button onClick={onSignOut} className="text-slate-600 hover:text-slate-900 transition-colors whitespace-nowrap">Sign out</button>
               </>
             ) : (
               <Link to="/auth" className="text-slate-600 hover:text-slate-900 transition-colors">Log in</Link>
             )}
             <Link
               to="/pricing"
-              className="inline-flex items-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
+              className="inline-flex items-center shrink-0 whitespace-nowrap rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-4 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2"
             >
               Start Review
             </Link>
@@ -143,28 +146,25 @@ function HomePage(props) {
   return (
     <Layout {...props}>
             <section className="bg-gradient-to-b from-white via-indigo-50/40 to-slate-50">
-        <div className="max-w-5xl mx-auto px-6 py-20 md:py-24">
+        <div className="max-w-5xl mx-auto px-6 py-12 md:py-16 text-center">
           <span className="inline-flex items-center rounded-full bg-indigo-50 text-indigo-700 text-xs font-medium uppercase tracking-wider px-3 py-1 ring-1 ring-indigo-100">
             Decision-support software
           </span>
-          <h1 className="mt-5 text-4xl md:text-6xl font-semibold tracking-tight leading-[1.05] text-slate-900 max-w-3xl text-balance">
-            Structured communication review reports for human review
+          {/* audit-friendly is held together so the line never breaks on its
+              hyphen, which text-balance alone does not prevent. */}
+          <h1 className="mt-5 text-4xl md:text-5xl font-semibold tracking-tight leading-[1.08] text-slate-900 max-w-3xl mx-auto text-balance">
+            Turn message exports into cited,{' '}
+            <span className="whitespace-nowrap">audit-friendly</span> reports
           </h1>
-          <p className="mt-5 text-lg text-slate-600 max-w-2xl leading-relaxed">
-            LinForensics helps organize chat and message text into cited, audit-friendly communication pattern reports.
+          <p className="mt-5 text-lg text-slate-600 max-w-2xl mx-auto leading-relaxed">
+            LinForensics organizes chat and message text into structured communication pattern
+            reports — every excerpt quoted from your own file, formatted for independent human review.
           </p>
-          <div className="mt-8 flex flex-wrap items-center gap-x-3 gap-y-2 text-xs uppercase tracking-wider text-slate-500">
-            <span>Cited excerpts</span>
-            <span aria-hidden="true">·</span>
-            <span>Audit-friendly structure</span>
-            <span aria-hidden="true">·</span>
-            <span>Human-reviewable</span>
-          </div>
         </div>
       </section>
 
             <section className="bg-slate-50/60 border-y border-slate-200/70">
-        <div className="max-w-5xl mx-auto px-6 py-10 md:py-12">
+        <div className="max-w-5xl mx-auto px-6 py-8 md:py-10">
           <div className="text-center">
             <Eyebrow>Process</Eyebrow>
             <h2 className="mt-2 text-2xl md:text-3xl font-semibold tracking-tight text-slate-900">How it works</h2>
@@ -186,7 +186,7 @@ function HomePage(props) {
       </section>
 
             <section className="bg-white">
-        <div className="max-w-7xl mx-auto px-6 py-12 md:py-16">
+        <div className="max-w-7xl mx-auto px-6 py-10 md:py-12">
           <div className="text-center">
             <Eyebrow>Deliverable</Eyebrow>
             <h2 className="mt-2 text-3xl md:text-4xl font-semibold tracking-tight text-slate-900">
@@ -198,7 +198,7 @@ function HomePage(props) {
             </p>
           </div>
 
-          <div className="mt-12">
+          <div className="mt-8 md:mt-10">
             <SampleReport />
           </div>
 
