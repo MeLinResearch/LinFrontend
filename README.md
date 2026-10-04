@@ -34,7 +34,7 @@ python reports/build_sample_case.py --engine-root .
 python reports/generate_sample_report.py --mode embed \
     --out /path/to/LinFrontend/src/sampleReport.generated.js
 python reports/generate_sample_report.py --mode annotated \
-    --site-link "https://liforensics.com/" \
+    --site-link "https://linforensics.com/" \
     --out /path/to/LinFrontend/public/sample-report.html
 ```
 

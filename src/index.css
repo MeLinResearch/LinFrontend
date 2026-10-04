@@ -5,3 +5,11 @@
 body {
   @apply bg-slate-50 text-slate-900;
 }
+
+@media print {
+  body:has(.lf-report-output) * { visibility: hidden; }
+  body .lf-report-output, body .lf-report-output * { visibility: visible; }
+  .lf-report-output { position: absolute; top: 0; left: 0; width: 100%; }
+  .lf-report-output button { display: none; }
+  .lf-report-output article { break-inside: avoid; }
+}
