@@ -203,7 +203,7 @@ function HomePage(props) {
           </div>
 
           <p className="mt-12 text-sm text-slate-500">
-            Structured JSON export for downstream use is coming soon.{' '}
+            Download your completed report as JSON, or print/save a PDF.{' '}
             <a
               href="/sample-report.html"
               className="text-indigo-700 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded"
@@ -333,6 +333,9 @@ function PricingPage(props) {
             <p className="mt-4 text-slate-600 leading-relaxed">
               Purchase includes one self-service communication review report.
             </p>
+            <p className="mt-3 text-sm text-slate-600">Check your transcript before buying. Parsing and preview are free; a report credit is used only when you generate the report.</p>
+            <Link to="/app" className="mt-2 inline-block text-sm font-medium text-indigo-700 underline">Check transcript compatibility for free</Link>
+            <p className="mt-2 text-xs text-slate-500">WhatsApp TXT, dated SMS/email TXT, CSV, or single-conversation Messenger/Instagram/Telegram JSON. Text only. PDFs, screenshots, ZIP archives and audio files are not supported.</p>
 
             <ul className="mt-6 space-y-3 border-t border-slate-100 pt-6">
               {included.map((item) => (
@@ -497,6 +500,7 @@ function ReportRunnerPage(props) {
   const [communicationText, setCommunicationText] = useState('');
   const [sourceFile, setSourceFile] = useState(null);
   const [caseNickname, setCaseNickname] = useState('');
+  const [dateOrder, setDateOrder] = useState('auto');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   const [parsed, setParsed] = useState(null);
@@ -569,6 +573,7 @@ function ReportRunnerPage(props) {
       const formData = new FormData();
       if (sourceFile) formData.append('file', sourceFile);
       else formData.append('pasted_text', trimmed);
+      formData.append('date_order', dateOrder);
       if (caseNickname.trim()) formData.append('case_nickname', caseNickname.trim());
       const response = await fetch(`${apiBaseUrl}/v1/reports/upload`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
       let body = null;
@@ -666,10 +671,19 @@ function ReportRunnerPage(props) {
             <textarea aria-label="Communication text" disabled={!!sourceFile || status === 'parsing' || status === 'analyzing'} value={communicationText} onChange={(e) => { setCommunicationText(e.target.value); clearReview(); }} placeholder="[2026-10-04 09:00] Person A: Message text\n[2026-10-04 09:01] Person B: Reply text" className="mt-2 w-full min-h-40 rounded-xl border border-slate-300 px-4 py-3" />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-slate-800">Or upload a CSV or TXT file</span>
-            <input aria-label="Upload conversation file" type="file" accept=".csv,.txt,text/plain,text/csv" disabled={status === 'parsing' || status === 'analyzing'} onChange={(e) => { setSourceFile(e.target.files?.[0] || null); clearReview(); }} className="mt-2 block w-full text-sm" />
+            <span className="text-sm font-medium text-slate-800">Or upload a CSV, TXT or JSON file</span>
+            <input aria-label="Upload conversation file" type="file" accept=".csv,.txt,.json,text/plain,text/csv,application/json" disabled={status === 'parsing' || status === 'analyzing'} onChange={(e) => { setSourceFile(e.target.files?.[0] || null); clearReview(); }} className="mt-2 block w-full text-sm" />
           </label>
-          <p className="text-sm text-slate-600">Include at least two speakers and dates/times. CSV columns: timestamp, speaker_label, text. Maximum file size: 1.5 MB. Reports remain available for 24 hours; download your copy.</p>
+          <p className="text-sm text-slate-600">Free compatibility check before purchase. Include at least two speakers and dates/times. Use WhatsApp TXT, dated SMS/email TXT, CSV, or a single-conversation Messenger/Instagram/Telegram JSON file. For WhatsApp, export without media and upload the TXT file. Extract JSON files from downloaded archives first. Maximum file size: 1.5 MB. Reports remain available for 24 hours; download your copy.</p>
+          <p className="text-sm text-slate-600">Text only. PDFs, screenshots, ZIP archives, audio and video are not supported. Export times without a timezone are treated as UTC; timestamps with explicit offsets retain their timezone.</p>
+          <label className="block">
+            <span className="text-sm font-medium text-slate-800">Export date format</span>
+            <select aria-label="Export date format" value={dateOrder} disabled={status === 'parsing' || status === 'analyzing'} onChange={(e) => { setDateOrder(e.target.value); clearReview(); }} className="mt-2 block rounded-xl border border-slate-300 px-4 py-3">
+              <option value="auto">Auto-detect</option>
+              <option value="dmy">Day/month/year (UK)</option>
+              <option value="mdy">Month/day/year (US)</option>
+            </select>
+          </label>
           <label className="block">
             <span className="text-sm font-medium text-slate-800">Case nickname (optional)</span>
             <input value={caseNickname} onChange={(e) => setCaseNickname(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3" />
@@ -696,6 +710,8 @@ function ReportRunnerPage(props) {
             </p>
             {parsed.date_range ? <p className="text-slate-700">Date range: {parsed.date_range.start} to {parsed.date_range.end}</p> : null}
             {warnings.includes('imbalanced_speaker_distribution') ? <p className="text-sm text-amber-700">One speaker has very few messages. Interpret the report with that missing context in mind.</p> : null}
+            {warnings.includes('non_text_messages_omitted') ? <p className="text-sm text-amber-700">Messages containing only attachments were omitted. Images, audio and video are not analyzed.</p> : null}
+            <p className="text-sm text-slate-600">Review these speakers and dates before generating. If you need a report credit, <Link to="/pricing" className="text-indigo-700 underline">buy a report</Link>. This preview has not used a credit.</p>
             {parsed.preview?.first_messages?.map((message, index) => <p key={index} className="text-slate-700 whitespace-pre-wrap">{message.speaker_label}: {message.text}</p>)}
             {requiresPartialTimestampAcknowledgement ? (
               <label className="flex items-start gap-2 mt-2">
