@@ -5,7 +5,7 @@ import { REPORT_CSS, REPORT_HTML, initReportWires } from './sampleReport.generat
 import './index.css';
 import { hasSupabaseConfig, supabase } from './supabaseClient';
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '');
 
 function CheckIcon({ className = 'h-5 w-5 text-indigo-600 shrink-0 mt-0.5' }) {
   return (
@@ -419,13 +419,38 @@ function PrivacyPage(props) {
 }
 
 function SuccessPage(props) {
+  const [creditStatus, setCreditStatus] = useState('Checking your report credit...');
+  useEffect(() => {
+    if (!props.user || !supabase || !apiBaseUrl) return;
+    let cancelled = false;
+    let timer;
+    let attempts = 0;
+    async function check() {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const response = await fetch(`${apiBaseUrl}/v1/billing/credits`, { headers: { Authorization: `Bearer ${data.session?.access_token}` } });
+        const body = await response.json();
+        if (cancelled) return;
+        if (response.ok && body.available > 0) {
+          setCreditStatus('Your report credit is ready.');
+          return;
+        }
+        if (++attempts < 10) timer = setTimeout(check, 2000);
+        else setCreditStatus('Payment confirmation is still pending. If your credit does not arrive, contact lin.research@proton.me with your receipt.');
+      } catch {
+        if (!cancelled) setCreditStatus('We could not check your credit. You can retry from Run Report or contact lin.research@proton.me.');
+      }
+    }
+    check();
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [props.user]);
   return (
     <Layout {...props}>
       <section className="max-w-3xl mx-auto px-6 py-20">
         <Eyebrow>Confirmation</Eyebrow>
-        <h1 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Purchase received.</h1>
+        <h1 className="mt-2 text-4xl md:text-5xl font-semibold tracking-tight text-slate-900">Report credit</h1>
         <p className="mt-4 text-slate-700 leading-relaxed">
-          Purchase received. Your report credit should be available shortly.
+          {props.user ? creditStatus : 'Log in to check your report credit.'}
         </p>
         <div className="mt-6 rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200/70 text-slate-700 leading-relaxed">
           LinForensics is decision-support software. It does not provide legal advice, medical advice, mental health advice, diagnoses, predictions, emergency support, or automated determinations.
@@ -470,6 +495,7 @@ function sanitizeReport(value) {
 function ReportRunnerPage(props) {
   const { user } = props;
   const [communicationText, setCommunicationText] = useState('');
+  const [sourceFile, setSourceFile] = useState(null);
   const [caseNickname, setCaseNickname] = useState('');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
@@ -480,11 +506,48 @@ function ReportRunnerPage(props) {
   const warnings = Array.isArray(parsed?.warnings) ? parsed.warnings : [];
   const requiresPartialTimestampAcknowledgement = warnings.includes('partial_timestamp_coverage');
 
+  function clearReview() {
+    setParsed(null);
+    setReport(null);
+    setError('');
+    setStatus('idle');
+    setAcknowledgePartialTimestampCoverage(false);
+  }
+
+  useEffect(() => {
+    if (!user || !supabase || !apiBaseUrl) return;
+    let cancelled = false;
+    const savedRun = sessionStorage.getItem(`lin-report-${user.id}`);
+    if (!savedRun) return;
+    (async () => {
+      try {
+        const { data } = await supabase.auth.getSession();
+        const response = await fetch(`${apiBaseUrl}/v1/reports/${encodeURIComponent(savedRun)}`, { headers: { Authorization: `Bearer ${data.session?.access_token}` } });
+        const body = await response.json();
+        if (!cancelled && response.ok && body.status === 'completed') {
+          setReport(body.report);
+          setStatus('completed');
+        }
+      } catch { /* A failed recovery leaves the normal upload flow available. */ }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.id]);
+
+  function downloadReport() {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(report, null, 2)], { type: 'application/json' }));
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'linforensics-report.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+
   async function handleParseUpload() {
     setError('');
+    setParsed(null);
     setReport(null);
     const trimmed = communicationText.trim();
-    if (!trimmed) {
+    if (!trimmed && !sourceFile) {
       setError('Communication text is required.');
       setStatus('error');
       return;
@@ -504,7 +567,8 @@ function ReportRunnerPage(props) {
         return;
       }
       const formData = new FormData();
-      formData.append('pasted_text', trimmed);
+      if (sourceFile) formData.append('file', sourceFile);
+      else formData.append('pasted_text', trimmed);
       if (caseNickname.trim()) formData.append('case_nickname', caseNickname.trim());
       const response = await fetch(`${apiBaseUrl}/v1/reports/upload`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
       let body = null;
@@ -514,6 +578,7 @@ function ReportRunnerPage(props) {
       if (response.status === 413) throw new Error('Upload is too large.');
       if (!response.ok) throw new Error('Upload failed. Please try again.');
       setParsed(body);
+      sessionStorage.setItem(`lin-report-${user.id}`, body.run_id);
       setAcknowledgePartialTimestampCoverage(false);
       setStatus('parsed');
     } catch (err) {
@@ -553,15 +618,16 @@ function ReportRunnerPage(props) {
       if (response.status === 401) throw new Error('Please log in again.');
       if (response.status === 402) throw new Error('No unused report credit is available. Please buy a report first.');
       if (response.status === 404) throw new Error('Upload session not found. Please upload again.');
-      if (response.status === 409) throw new Error('Upload changed or expired. Please upload again.');
+      if (response.status === 409) throw new Error(body?.detail?.reason_code === 'analysis_in_progress' ? 'This report is already being generated. Try again shortly.' : 'Upload changed or expired. Please upload again.');
       if (response.status === 422) {
-        const detail = typeof body?.detail === 'string' ? body.detail.toLowerCase() : '';
+        const detail = typeof body?.detail === 'string' ? body.detail.toLowerCase() : body?.detail?.reason_code || '';
         if (detail.includes('acknowledge') || detail.includes('partial')) throw new Error('Please check the acknowledgement box.');
         throw new Error('Report generation failed. Please try again.');
       }
-      if (response.status === 503) throw new Error('Report generation is not configured yet.');
+      if (response.status === 503) throw new Error(parseErrorDetail(body, 'Report generation is temporarily unavailable. Please try again.'));
       if (!response.ok) throw new Error('Report generation failed. Please try again.');
       setReport(body?.report ?? body);
+      sessionStorage.setItem(`lin-report-${user.id}`, parsed.run_id);
       setStatus('completed');
     } catch (err) {
       setError(err.message || 'Report generation failed. Please try again.');
@@ -584,7 +650,7 @@ function ReportRunnerPage(props) {
   const sanitized = sanitizeReport(report);
   const reportSummary = report?.summary && typeof report.summary === 'object' ? report.summary : null;
   const reportPatternGroups = Array.isArray(report?.pattern_groups) ? report.pattern_groups : [];
-  const isPublicBackendShape = !!(reportSummary && reportPatternGroups.length);
+  const isPublicBackendShape = !!(reportSummary && Array.isArray(report?.pattern_groups));
   const items = report?.signals ?? report?.findings ?? report?.items;
   const visibleTopLevel = [report?.title || report?.headline, typeof report?.summary === 'string' ? report.summary : null, report?.tier || report?.status, report?.next_steps, report?.disclaimer].filter(Boolean).length;
   const hasCards = Array.isArray(items) && items.length > 0;
@@ -597,8 +663,13 @@ function ReportRunnerPage(props) {
         <div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 space-y-4">
           <label className="block">
             <span className="text-sm font-medium text-slate-800">Communication text</span>
-            <textarea value={communicationText} onChange={(e) => setCommunicationText(e.target.value)} placeholder="Paste the conversation text you want reviewed." className="mt-2 w-full min-h-40 rounded-xl border border-slate-300 px-4 py-3" />
+            <textarea aria-label="Communication text" disabled={!!sourceFile || status === 'parsing' || status === 'analyzing'} value={communicationText} onChange={(e) => { setCommunicationText(e.target.value); clearReview(); }} placeholder="[2026-10-04 09:00] Person A: Message text\n[2026-10-04 09:01] Person B: Reply text" className="mt-2 w-full min-h-40 rounded-xl border border-slate-300 px-4 py-3" />
           </label>
+          <label className="block">
+            <span className="text-sm font-medium text-slate-800">Or upload a CSV or TXT file</span>
+            <input aria-label="Upload conversation file" type="file" accept=".csv,.txt,text/plain,text/csv" disabled={status === 'parsing' || status === 'analyzing'} onChange={(e) => { setSourceFile(e.target.files?.[0] || null); clearReview(); }} className="mt-2 block w-full text-sm" />
+          </label>
+          <p className="text-sm text-slate-600">Include at least two speakers and dates/times. CSV columns: timestamp, speaker_label, text. Maximum file size: 1.5 MB. Reports remain available for 24 hours; download your copy.</p>
           <label className="block">
             <span className="text-sm font-medium text-slate-800">Case nickname (optional)</span>
             <input value={caseNickname} onChange={(e) => setCaseNickname(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3" />
@@ -613,34 +684,38 @@ function ReportRunnerPage(props) {
         {parsed ? (
           <div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 space-y-2">
             <h2 className="text-xl font-semibold text-slate-900">Parse Review</h2>
-            <p className="text-slate-700">message_count: {parsed.message_count ?? 'n/a'}</p>
-            <p className="text-slate-700">speaker_count: {parsed.speaker_count ?? 'n/a'}</p>
-            <p className="text-slate-700">speakers: {Array.isArray(parsed.speakers) ? parsed.speakers.join(', ') : 'n/a'}</p>
+            <p className="text-slate-700">Messages: {parsed.message_count ?? 'n/a'}</p>
+            <p className="text-slate-700">Speaker count: {parsed.speaker_count ?? 'n/a'}</p>
+            <p className="text-slate-700">Speakers: {Array.isArray(parsed.speakers) ? parsed.speakers.join(', ') : 'n/a'}</p>
             <p className="text-slate-700">
-              timestamp_coverage: {parsed.timestamp_coverage == null
+              Timestamp coverage: {parsed.timestamp_coverage == null
                 ? 'n/a'
                 : (typeof parsed.timestamp_coverage === 'string' || typeof parsed.timestamp_coverage === 'number' || typeof parsed.timestamp_coverage === 'boolean')
                     ? String(parsed.timestamp_coverage)
-                    : JSON.stringify(parsed.timestamp_coverage)}
+                    : `${parsed.timestamp_coverage.with_timestamp} dated messages, ${parsed.timestamp_coverage.missing_timestamp} missing dates`}
             </p>
-            {parsed.date_range ? <p className="text-slate-700">date_range: {typeof parsed.date_range === 'string' ? parsed.date_range : JSON.stringify(parsed.date_range)}</p> : null}
-            {warnings.length ? <p className="text-slate-700">warnings: {warnings.join(', ')}</p> : null}
-            {parsed.preview ? <p className="text-slate-700 whitespace-pre-wrap">preview: {typeof parsed.preview === 'string' ? parsed.preview : JSON.stringify(parsed.preview)}</p> : null}
+            {parsed.date_range ? <p className="text-slate-700">Date range: {parsed.date_range.start} to {parsed.date_range.end}</p> : null}
+            {warnings.includes('imbalanced_speaker_distribution') ? <p className="text-sm text-amber-700">One speaker has very few messages. Interpret the report with that missing context in mind.</p> : null}
+            {parsed.preview?.first_messages?.map((message, index) => <p key={index} className="text-slate-700 whitespace-pre-wrap">{message.speaker_label}: {message.text}</p>)}
             {requiresPartialTimestampAcknowledgement ? (
               <label className="flex items-start gap-2 mt-2">
                 <input type="checkbox" checked={acknowledgePartialTimestampCoverage} onChange={(e) => setAcknowledgePartialTimestampCoverage(e.target.checked)} className="mt-1" />
                 <span className="text-sm text-slate-700">I understand some timestamps may be missing or incomplete.</span>
               </label>
             ) : null}
-            <button onClick={handleConfirmAndGenerate} disabled={status === 'analyzing' || status === 'parsing'} className="mt-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium disabled:opacity-70">
+            <button onClick={handleConfirmAndGenerate} disabled={status === 'analyzing' || status === 'parsing' || status === 'completed' || (requiresPartialTimestampAcknowledgement && !acknowledgePartialTimestampCoverage)} className="mt-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 font-medium disabled:opacity-70">
               {status === 'analyzing' ? 'Generating...' : 'Confirm and Generate Report'}
             </button>
           </div>
         ) : null}
 
         {status === 'completed' && report ? (
-          <div className="rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 space-y-4">
+          <div className="lf-report-output rounded-2xl bg-white p-6 ring-1 ring-slate-200/70 space-y-4">
             <h2 className="text-xl font-semibold text-slate-900">Report</h2>
+            <div className="flex gap-3">
+              <button onClick={downloadReport} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Download report</button>
+              <button onClick={() => window.print()} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">Print / Save PDF</button>
+            </div>
             {isPublicBackendShape ? (
               <>
                 {reportSummary?.overall_level ? <p className="text-slate-700">Status: {reportSummary.overall_level}</p> : null}
