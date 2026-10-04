@@ -333,8 +333,8 @@ function PricingPage(props) {
             <p className="mt-4 text-slate-600 leading-relaxed">
               Purchase includes one self-service communication review report.
             </p>
-            <p className="mt-3 text-sm text-slate-600">Check your transcript before buying. Parsing and preview are free; a report credit is used only when you generate the report.</p>
-            <Link to="/app" className="mt-2 inline-block text-sm font-medium text-indigo-700 underline">Check transcript compatibility for free</Link>
+            <p className="mt-3 text-sm text-slate-600">Paying customers receive up to 10 transcript compatibility checks per day at no additional charge. A report credit is used only when you generate the report.</p>
+            <Link to="/app" className="mt-2 inline-block text-sm font-medium text-indigo-700 underline">Check transcript compatibility (purchase required)</Link>
             <p className="mt-2 text-xs text-slate-500">WhatsApp TXT, dated SMS/email TXT, CSV, or single-conversation Messenger/Instagram/Telegram JSON. Text only. PDFs, screenshots, ZIP archives and audio files are not supported.</p>
 
             <ul className="mt-6 space-y-3 border-t border-slate-100 pt-6">
@@ -504,6 +504,9 @@ function ReportRunnerPage(props) {
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   const [parsed, setParsed] = useState(null);
+  const [previewLimitReached, setPreviewLimitReached] = useState(false);
+  const [clearingPreviews, setClearingPreviews] = useState(false);
+  const [purchaseRequired, setPurchaseRequired] = useState(false);
   const [report, setReport] = useState(null);
   const [acknowledgePartialTimestampCoverage, setAcknowledgePartialTimestampCoverage] = useState(false);
 
@@ -516,6 +519,21 @@ function ReportRunnerPage(props) {
     setError('');
     setStatus('idle');
     setAcknowledgePartialTimestampCoverage(false);
+    setPreviewLimitReached(false);
+    setPurchaseRequired(false);
+  }
+
+  async function clearUnusedPreviews() {
+    setClearingPreviews(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch(`${apiBaseUrl}/v1/reports/previews`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${data.session?.access_token}` },
+      });
+      if (!response.ok) throw new Error('Could not clear unused previews. Please try again later.');
+      clearReview();
+    } catch (err) { setError(err.message); }
+    finally { setClearingPreviews(false); }
   }
 
   useEffect(() => {
@@ -548,6 +566,8 @@ function ReportRunnerPage(props) {
 
   async function handleParseUpload() {
     setError('');
+    setPreviewLimitReached(false);
+    setPurchaseRequired(false);
     setParsed(null);
     setReport(null);
     const trimmed = communicationText.trim();
@@ -580,6 +600,17 @@ function ReportRunnerPage(props) {
       try { body = await response.json(); } catch {}
       if (response.status === 401) throw new Error('Please log in again.');
       if (response.status === 422) throw new Error(parseErrorDetail(body, 'Upload could not be parsed.'));
+      if (response.status === 402) {
+        setPurchaseRequired(true);
+        throw new Error(parseErrorDetail(body, 'Purchase a report to unlock transcript checks.'));
+      }
+      if (response.status === 429) {
+        setPreviewLimitReached(body?.detail?.reason_code === 'upload_preview_limit');
+        const seconds = Number(body?.detail?.retry_after_seconds ?? response.headers.get('Retry-After'));
+        const nextTry = body?.detail?.reason_code === 'upload_rate_limit' && seconds > 0
+          ? ` Try again after ${new Date(Date.now() + seconds * 1000).toLocaleString()}.` : '';
+        throw new Error(parseErrorDetail(body, 'Transcript checks are temporarily limited. Please try again later.') + nextTry);
+      }
       if (response.status === 413) throw new Error('Upload is too large.');
       if (!response.ok) throw new Error('Upload failed. Please try again.');
       setParsed(body);
@@ -674,8 +705,9 @@ function ReportRunnerPage(props) {
             <span className="text-sm font-medium text-slate-800">Or upload a CSV, TXT or JSON file</span>
             <input aria-label="Upload conversation file" type="file" accept=".csv,.txt,.json,text/plain,text/csv,application/json" disabled={status === 'parsing' || status === 'analyzing'} onChange={(e) => { setSourceFile(e.target.files?.[0] || null); clearReview(); }} className="mt-2 block w-full text-sm" />
           </label>
-          <p className="text-sm text-slate-600">Free compatibility check before purchase. Include at least two speakers and dates/times. Use WhatsApp TXT, dated SMS/email TXT, CSV, or a single-conversation Messenger/Instagram/Telegram JSON file. For WhatsApp, export without media and upload the TXT file. Extract JSON files from downloaded archives first. Maximum file size: 1.5 MB. Reports remain available for 24 hours; download your copy.</p>
+          <p className="text-sm text-slate-600">Transcript compatibility checks are included for paying customers at no additional charge. Include at least two speakers and dates/times. Use WhatsApp TXT, dated SMS/email TXT, CSV, or a single-conversation Messenger/Instagram/Telegram JSON file. For WhatsApp, export without media and upload the TXT file. Extract JSON files from downloaded archives first. Maximum file size: 1.5 MB. Reports remain available for 24 hours; download your copy.</p>
           <p className="text-sm text-slate-600">Text only. PDFs, screenshots, ZIP archives, audio and video are not supported. Export times without a timezone are treated as UTC; timestamps with explicit offsets retain their timezone.</p>
+          <p className="text-xs text-slate-500">Purchase required. Up to 10 checks per day and 5 per minute per account, including unsuccessful uploads. Keep up to 5 pending previews. Additional service capacity limits apply.</p>
           <label className="block">
             <span className="text-sm font-medium text-slate-800">Export date format</span>
             <select aria-label="Export date format" value={dateOrder} disabled={status === 'parsing' || status === 'analyzing'} onChange={(e) => { setDateOrder(e.target.value); clearReview(); }} className="mt-2 block rounded-xl border border-slate-300 px-4 py-3">
@@ -693,6 +725,8 @@ function ReportRunnerPage(props) {
           </button>
           <p className="text-xs text-slate-500">State: {status}</p>
           {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+          {purchaseRequired ? <Link to="/pricing" className="inline-block text-sm font-medium text-indigo-700 underline">Purchase a report</Link> : null}
+          {previewLimitReached ? <button onClick={clearUnusedPreviews} disabled={clearingPreviews} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">{clearingPreviews ? 'Clearing...' : 'Clear all unused previews'}</button> : null}
         </div>
 
         {parsed ? (
