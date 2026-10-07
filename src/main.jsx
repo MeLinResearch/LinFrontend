@@ -203,7 +203,7 @@ function HomePage(props) {
           </div>
 
           <p className="mt-12 text-sm text-slate-500">
-            Structured JSON export for downstream use is coming soon.{' '}
+            Download your completed report as JSON, or print/save a PDF.{' '}
             <a
               href="/sample-report.html"
               className="text-indigo-700 font-medium hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 rounded"
@@ -333,6 +333,9 @@ function PricingPage(props) {
             <p className="mt-4 text-slate-600 leading-relaxed">
               Purchase includes one self-service communication review report.
             </p>
+            <p className="mt-3 text-sm text-slate-600">Paying customers receive up to 10 transcript compatibility checks per day at no additional charge. A report credit is used only when you generate the report.</p>
+            <Link to="/app" className="mt-2 inline-block text-sm font-medium text-indigo-700 underline">Check transcript compatibility (purchase required)</Link>
+            <p className="mt-2 text-xs text-slate-500">WhatsApp TXT, dated SMS/email TXT, CSV, or single-conversation Messenger/Instagram/Telegram JSON. Text only. PDFs, screenshots, ZIP archives and audio files are not supported.</p>
 
             <ul className="mt-6 space-y-3 border-t border-slate-100 pt-6">
               {included.map((item) => (
@@ -497,9 +500,13 @@ function ReportRunnerPage(props) {
   const [communicationText, setCommunicationText] = useState('');
   const [sourceFile, setSourceFile] = useState(null);
   const [caseNickname, setCaseNickname] = useState('');
+  const [dateOrder, setDateOrder] = useState('auto');
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState('');
   const [parsed, setParsed] = useState(null);
+  const [previewLimitReached, setPreviewLimitReached] = useState(false);
+  const [clearingPreviews, setClearingPreviews] = useState(false);
+  const [purchaseRequired, setPurchaseRequired] = useState(false);
   const [report, setReport] = useState(null);
   const [acknowledgePartialTimestampCoverage, setAcknowledgePartialTimestampCoverage] = useState(false);
 
@@ -512,6 +519,21 @@ function ReportRunnerPage(props) {
     setError('');
     setStatus('idle');
     setAcknowledgePartialTimestampCoverage(false);
+    setPreviewLimitReached(false);
+    setPurchaseRequired(false);
+  }
+
+  async function clearUnusedPreviews() {
+    setClearingPreviews(true);
+    try {
+      const { data } = await supabase.auth.getSession();
+      const response = await fetch(`${apiBaseUrl}/v1/reports/previews`, {
+        method: 'DELETE', headers: { Authorization: `Bearer ${data.session?.access_token}` },
+      });
+      if (!response.ok) throw new Error('Could not clear unused previews. Please try again later.');
+      clearReview();
+    } catch (err) { setError(err.message); }
+    finally { setClearingPreviews(false); }
   }
 
   useEffect(() => {
@@ -544,6 +566,8 @@ function ReportRunnerPage(props) {
 
   async function handleParseUpload() {
     setError('');
+    setPreviewLimitReached(false);
+    setPurchaseRequired(false);
     setParsed(null);
     setReport(null);
     const trimmed = communicationText.trim();
@@ -569,12 +593,24 @@ function ReportRunnerPage(props) {
       const formData = new FormData();
       if (sourceFile) formData.append('file', sourceFile);
       else formData.append('pasted_text', trimmed);
+      formData.append('date_order', dateOrder);
       if (caseNickname.trim()) formData.append('case_nickname', caseNickname.trim());
       const response = await fetch(`${apiBaseUrl}/v1/reports/upload`, { method: 'POST', headers: { Authorization: `Bearer ${accessToken}` }, body: formData });
       let body = null;
       try { body = await response.json(); } catch {}
       if (response.status === 401) throw new Error('Please log in again.');
       if (response.status === 422) throw new Error(parseErrorDetail(body, 'Upload could not be parsed.'));
+      if (response.status === 402) {
+        setPurchaseRequired(true);
+        throw new Error(parseErrorDetail(body, 'Purchase a report to unlock transcript checks.'));
+      }
+      if (response.status === 429) {
+        setPreviewLimitReached(body?.detail?.reason_code === 'upload_preview_limit');
+        const seconds = Number(body?.detail?.retry_after_seconds ?? response.headers.get('Retry-After'));
+        const nextTry = body?.detail?.reason_code === 'upload_rate_limit' && seconds > 0
+          ? ` Try again after ${new Date(Date.now() + seconds * 1000).toLocaleString()}.` : '';
+        throw new Error(parseErrorDetail(body, 'Transcript checks are temporarily limited. Please try again later.') + nextTry);
+      }
       if (response.status === 413) throw new Error('Upload is too large.');
       if (!response.ok) throw new Error('Upload failed. Please try again.');
       setParsed(body);
@@ -666,10 +702,20 @@ function ReportRunnerPage(props) {
             <textarea aria-label="Communication text" disabled={!!sourceFile || status === 'parsing' || status === 'analyzing'} value={communicationText} onChange={(e) => { setCommunicationText(e.target.value); clearReview(); }} placeholder="[2026-10-04 09:00] Person A: Message text\n[2026-10-04 09:01] Person B: Reply text" className="mt-2 w-full min-h-40 rounded-xl border border-slate-300 px-4 py-3" />
           </label>
           <label className="block">
-            <span className="text-sm font-medium text-slate-800">Or upload a CSV or TXT file</span>
-            <input aria-label="Upload conversation file" type="file" accept=".csv,.txt,text/plain,text/csv" disabled={status === 'parsing' || status === 'analyzing'} onChange={(e) => { setSourceFile(e.target.files?.[0] || null); clearReview(); }} className="mt-2 block w-full text-sm" />
+            <span className="text-sm font-medium text-slate-800">Or upload a CSV, TXT or JSON file</span>
+            <input aria-label="Upload conversation file" type="file" accept=".csv,.txt,.json,text/plain,text/csv,application/json" disabled={status === 'parsing' || status === 'analyzing'} onChange={(e) => { setSourceFile(e.target.files?.[0] || null); clearReview(); }} className="mt-2 block w-full text-sm" />
           </label>
-          <p className="text-sm text-slate-600">Include at least two speakers and dates/times. CSV columns: timestamp, speaker_label, text. Maximum file size: 1.5 MB. Reports remain available for 24 hours; download your copy.</p>
+          <p className="text-sm text-slate-600">Transcript compatibility checks are included for paying customers at no additional charge. Include at least two speakers and dates/times. Use WhatsApp TXT, dated SMS/email TXT, CSV, or a single-conversation Messenger/Instagram/Telegram JSON file. For WhatsApp, export without media and upload the TXT file. Extract JSON files from downloaded archives first. Maximum file size: 1.5 MB. Reports remain available for 24 hours; download your copy.</p>
+          <p className="text-sm text-slate-600">Text only. PDFs, screenshots, ZIP archives, audio and video are not supported. Export times without a timezone are treated as UTC; timestamps with explicit offsets retain their timezone.</p>
+          <p className="text-xs text-slate-500">Purchase required. Up to 10 checks per day and 5 per minute per account, including unsuccessful uploads. Keep up to 5 pending previews. Additional service capacity limits apply.</p>
+          <label className="block">
+            <span className="text-sm font-medium text-slate-800">Export date format</span>
+            <select aria-label="Export date format" value={dateOrder} disabled={status === 'parsing' || status === 'analyzing'} onChange={(e) => { setDateOrder(e.target.value); clearReview(); }} className="mt-2 block rounded-xl border border-slate-300 px-4 py-3">
+              <option value="auto">Auto-detect</option>
+              <option value="dmy">Day/month/year (UK)</option>
+              <option value="mdy">Month/day/year (US)</option>
+            </select>
+          </label>
           <label className="block">
             <span className="text-sm font-medium text-slate-800">Case nickname (optional)</span>
             <input value={caseNickname} onChange={(e) => setCaseNickname(e.target.value)} className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3" />
@@ -679,6 +725,8 @@ function ReportRunnerPage(props) {
           </button>
           <p className="text-xs text-slate-500">State: {status}</p>
           {error ? <p className="text-sm text-rose-700">{error}</p> : null}
+          {purchaseRequired ? <Link to="/pricing" className="inline-block text-sm font-medium text-indigo-700 underline">Purchase a report</Link> : null}
+          {previewLimitReached ? <button onClick={clearUnusedPreviews} disabled={clearingPreviews} className="rounded-xl border border-slate-300 px-4 py-2 text-sm">{clearingPreviews ? 'Clearing...' : 'Clear all unused previews'}</button> : null}
         </div>
 
         {parsed ? (
@@ -696,6 +744,8 @@ function ReportRunnerPage(props) {
             </p>
             {parsed.date_range ? <p className="text-slate-700">Date range: {parsed.date_range.start} to {parsed.date_range.end}</p> : null}
             {warnings.includes('imbalanced_speaker_distribution') ? <p className="text-sm text-amber-700">One speaker has very few messages. Interpret the report with that missing context in mind.</p> : null}
+            {warnings.includes('non_text_messages_omitted') ? <p className="text-sm text-amber-700">Messages containing only attachments were omitted. Images, audio and video are not analyzed.</p> : null}
+            <p className="text-sm text-slate-600">Review these speakers and dates before generating. If you need a report credit, <Link to="/pricing" className="text-indigo-700 underline">buy a report</Link>. This preview has not used a credit.</p>
             {parsed.preview?.first_messages?.map((message, index) => <p key={index} className="text-slate-700 whitespace-pre-wrap">{message.speaker_label}: {message.text}</p>)}
             {requiresPartialTimestampAcknowledgement ? (
               <label className="flex items-start gap-2 mt-2">

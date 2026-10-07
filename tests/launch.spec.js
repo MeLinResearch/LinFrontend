@@ -113,3 +113,126 @@ test('quoted HTML is displayed as text', async ({ page }) => {
   await expect(page.getByText(`“${dangerous}”`, { exact: true })).toBeVisible();
   expect(await page.evaluate(() => window.testXss)).toBeUndefined();
 });
+
+test('ambiguous dates can be resolved before generating a report', async ({ page }) => {
+  const bodies = [];
+  let analysisCalls = 0;
+  await page.route('**/v1/reports/confirm-and-analyze', route => {
+    analysisCalls += 1;
+    return route.fulfill({ json: { status: 'completed', report } });
+  });
+  await page.route('**/v1/reports/upload', route => {
+    bodies.push(route.request().postData());
+    return bodies.length === 1
+      ? route.fulfill({ status: 422, json: { detail: { reason_code: 'ambiguous_date_format', message: "These dates could be day/month or month/day. Choose the export's date format, then parse again. No report credit has been used." } } })
+      : route.fulfill({ json: parsed });
+  });
+  await page.goto('/#/app');
+  await page.getByLabel('Communication text').fill('04/05/2026, 09:00 - A: Hello\n04/05/2026, 09:01 - B: Hi');
+  await page.getByRole('button', { name: 'Parse Upload', exact: true }).click();
+  await expect(page.getByText(/These dates could be day\/month or month\/day/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirm and Generate Report' })).not.toBeVisible();
+  await page.getByLabel('Export date format').selectOption('dmy');
+  await page.getByRole('button', { name: 'Parse Upload', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Parse Review' })).toBeVisible();
+  expect(bodies[0]).toMatch(/name="date_order"\r\n\r\nauto/);
+  expect(bodies[1]).toMatch(/name="date_order"\r\n\r\ndmy/);
+  expect(analysisCalls).toBe(0);
+  await page.getByLabel('Export date format').selectOption('mdy');
+  await expect(page.getByRole('heading', { name: 'Parse Review' })).not.toBeVisible();
+});
+
+test('native JSON uploads show omitted-media warning before analysis', async ({ page }) => {
+  let body;
+  await page.route('**/v1/reports/upload', route => {
+    body = route.request().postData();
+    return route.fulfill({ json: { ...parsed, warnings: ['non_text_messages_omitted'] } });
+  });
+  await page.goto('/#/app');
+  await page.getByLabel('Upload conversation file').setInputFiles({
+    name: 'message_1.json', mimeType: 'application/json',
+    buffer: Buffer.from(JSON.stringify({ messages: [
+      { sender_name: 'A', timestamp_ms: 1777885200000, content: 'Hello' },
+      { sender_name: 'B', timestamp_ms: 1777885260000, content: 'Hi' },
+    ] })),
+  });
+  await page.getByRole('button', { name: 'Parse Upload', exact: true }).click();
+  await expect(page.getByText('Messages containing only attachments were omitted. Images, audio and video are not analyzed.', { exact: true })).toBeVisible();
+  expect(body).toContain('filename="message_1.json"');
+  expect(body).not.toContain('name="pasted_text"');
+});
+
+test('pricing explains purchase-only compatibility checks and unsupported files', async ({ page }) => {
+  let checkoutCalls = 0;
+  await page.route('**/v1/billing/checkout', route => {
+    checkoutCalls += 1;
+    return route.fulfill({ json: {} });
+  });
+  await page.goto('/#/pricing');
+  await expect(page.getByText(/PDFs, screenshots, ZIP archives and audio files are not supported/)).toBeVisible();
+  await expect(page.getByText(/Paying customers receive up to 10 transcript compatibility checks per day/)).toBeVisible();
+  await expect(page.getByText(/Check your transcript before buying/)).not.toBeVisible();
+  await page.getByRole('link', { name: 'Check transcript compatibility (purchase required)' }).click();
+  await expect(page.getByRole('heading', { name: 'Run Report' })).toBeVisible();
+  expect(checkoutCalls).toBe(0);
+});
+
+test('free check rate limit shows when to retry without generating a report', async ({ page }) => {
+  let analysisCalls = 0;
+  await page.route('**/v1/reports/confirm-and-analyze', route => {
+    analysisCalls += 1;
+    return route.fulfill({ json: { status: 'completed', report } });
+  });
+  await page.route('**/v1/reports/upload', route => route.fulfill({
+    status: 429, headers: { 'Retry-After': '60' }, json: { detail: {
+      reason_code: 'upload_rate_limit', retry_after_seconds: 60,
+      message: 'You have reached the free transcript check limit. No report credit has been used.',
+    } },
+  }));
+  await page.goto('/#/app');
+  await page.getByLabel('Communication text').fill('Transcript');
+  await page.getByRole('button', { name: 'Parse Upload', exact: true }).click();
+  await expect(page.getByText(/No report credit has been used\. Try again after/)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Confirm and Generate Report' })).not.toBeVisible();
+  expect(analysisCalls).toBe(0);
+});
+
+test('preview capacity can be cleared before retrying a free check', async ({ page }) => {
+  let uploads = 0;
+  let deleted = 0;
+  await page.route('**/v1/reports/upload', route => {
+    uploads += 1;
+    return uploads === 1 ? route.fulfill({ status: 429, json: { detail: {
+      reason_code: 'upload_preview_limit', message: 'You already have five pending transcript previews. Clear unused previews or wait for them to expire. No report credit has been used.',
+    } } }) : route.fulfill({ json: parsed });
+  });
+  await page.route('**/v1/reports/previews', route => {
+    expect(route.request().method()).toBe('DELETE');
+    expect(route.request().headers().authorization).toBe('Bearer fixture-token');
+    deleted += 1;
+    return route.fulfill({ json: { removed: 5 } });
+  });
+  await page.goto('/#/app');
+  await page.getByLabel('Communication text').fill('Transcript');
+  await page.getByRole('button', { name: 'Parse Upload', exact: true }).click();
+  await page.getByRole('button', { name: 'Clear all unused previews' }).click();
+  await expect(page.getByRole('button', { name: 'Clear all unused previews' })).not.toBeVisible();
+  await expect(page.getByLabel('Communication text')).toHaveValue('Transcript');
+  await page.getByRole('button', { name: 'Parse Upload', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Parse Review' })).toBeVisible();
+  expect(deleted).toBe(1);
+});
+
+test('unpaid transcript check directs customers to purchase', async ({ page }) => {
+  await page.route('**/v1/reports/upload', route => route.fulfill({ status: 402, json: { detail: {
+    reason_code: 'paid_customer_required',
+    message: 'Transcript checks are included for paying customers. Purchase a report to unlock up to 10 checks per day.',
+  } } }));
+  await page.goto('/#/app');
+  await page.getByLabel('Communication text').fill('Transcript');
+  await page.getByRole('button', { name: 'Parse Upload', exact: true }).click();
+  await expect(page.getByText(/Purchase a report to unlock up to 10 checks per day/)).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Parse Review' })).not.toBeVisible();
+  await page.getByRole('link', { name: 'Purchase a report', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Buy Report' })).toBeVisible();
+});
